@@ -1,0 +1,504 @@
+<div class="panel-wrapper">
+  <div class="panel-container">
+    <div class="panel-content">
+
+      <!-- Header -->
+      <div class="panel-header-row">
+        <h1 class="panel-header-title">
+          Claim Attachments
+        </h1>
+      </div>
+
+      <!-- Loading -->
+      <ng-container *ngIf="pageLoading">
+        <div class="panel-header-row">
+          Loading attachments...
+        </div>
+      </ng-container>
+
+      <!-- Error -->
+      <ng-container *ngIf="pageLoadError">
+        <div class="panel-header-row">
+          Error - {{ pageLoadError }}
+        </div>
+      </ng-container>
+
+      <!-- Main Content -->
+      <ng-container *ngIf="!pageLoading && !pageLoadError && attachmentData !== null">
+
+        <!-- Attachment Table -->
+        <div class="attachments-table-card">
+
+          <div class="attachments-table-card-header">
+            <button
+              class="button"
+              (click)="openAttachmentForm()">
+              Add Attachment
+            </button>
+          </div>
+
+          <kendo-grid
+            class="attachments-kendo-grid"
+            [data]="attachmentData"
+            [height]="540"
+            [sortable]="true"
+            [resizable]="true"
+            [navigable]="true"
+            (cellClick)="openFile($any($event.dataItem), $any($event.originalEvent))">
+
+            <kendo-grid-column
+              title="Style"
+              [width]="220">
+
+              <ng-template
+                kendoGridCellTemplate
+                let-row>
+
+                {{ row.directory }} - {{ row.directoryDesc }}
+
+              </ng-template>
+
+            </kendo-grid-column>
+
+            <kendo-grid-column
+              title="Filename"
+              [width]="300">
+
+              <ng-template
+                kendoGridCellTemplate
+                let-row>
+
+                {{ row.filename }}
+
+              </ng-template>
+
+            </kendo-grid-column>
+
+            <kendo-grid-column
+              title="MailToDate"
+              [width]="160">
+
+              <ng-template
+                kendoGridCellTemplate
+                let-row>
+
+                {{ row.mailToDate?.text }}
+
+              </ng-template>
+
+            </kendo-grid-column>
+
+            <kendo-grid-column
+              title="Notes"
+              [width]="120">
+
+              <ng-template
+                kendoGridCellTemplate
+                let-row>
+
+                <div
+                  #note
+                  (mouseenter)="showNoteHover(row, note)"
+                  (mouseleave)="hideNote()">
+
+                  {{ row.notes.length }}
+                  {{ row.notes.length == 1 ? 'note' : 'notes' }}
+
+                </div>
+
+              </ng-template>
+
+            </kendo-grid-column>
+
+            <kendo-grid-column
+              title=""
+              [width]="140"
+              [sortable]="false"
+              [filterable]="false">
+
+              <ng-template
+                kendoGridCellTemplate
+                let-row>
+
+                <button
+                  class="button add-note-btn"
+                  type="button"
+                  (click)="$event.stopPropagation(); openNoteForm(row)"
+                  title="Add Note">
+
+                  Add Note
+
+                </button>
+
+              </ng-template>
+
+            </kendo-grid-column>
+
+            <ng-template kendoGridNoRecordsTemplate>
+              No attachments found.
+            </ng-template>
+
+          </kendo-grid>
+
+        </div>
+
+        <!-- Notes Hover Popover -->
+        <div
+          class="notes-popover"
+          *ngIf="noteHover.visible"
+          [style.top.px]="noteHover.top"
+          [style.left.px]="noteHover.left"
+          [attr.data-placement]="noteHover.placement"
+          (mouseenter)="cancelNoteHide()"
+          (mouseleave)="hideNote()">
+
+          <ng-container *ngIf="noteHover.row.notes.length">
+
+            <div
+              class="note-item"
+              *ngFor="let n of noteHover.row.notes">
+
+              <div class="note-text">
+
+                {{ n.ATXR_LAST_UPD_DT | date:'MM/dd/yyyy h:mm a' }}
+                ({{ n.ATXR_LAST_UPD_USUS }}):
+                {{ n.text }}
+
+              </div>
+
+            </div>
+
+          </ng-container>
+
+        </div>
+
+        <!-- File Viewer -->
+        <div
+          class="overlay"
+          *ngIf="view.open"
+          (click)="closeFile()"
+          (keydown.escape)="closeFile()">
+
+          <div
+            class="modal"
+            role="dialog"
+            aria-modal="true"
+            (click)="$event.stopPropagation()">
+
+            <div class="modal-header">
+
+              <h3 class="modal-title">
+                {{ view.directory }}/{{ view.filename }}
+              </h3>
+
+              <button
+                type="button"
+                class="modal-close"
+                (click)="closeFile()"
+                aria-label="Close">
+
+                X
+
+              </button>
+
+            </div>
+
+            <div class="modal-body">
+
+              <section class="viewer-section">
+
+                <ng-container *ngIf="view.error">
+                  Error - {{ view.error }}
+                </ng-container>
+
+                <iframe
+                  #viewerIframe
+                  class="iframe-viewer"
+                  *ngIf="view.canIframe">
+                </iframe>
+
+                <ng-container *ngIf="view.downloadUrl">
+
+                  <button
+                    type="button"
+                    class="button"
+                    (click)="triggerDownload()">
+
+                    Download
+
+                  </button>
+
+                </ng-container>
+
+              </section>
+
+              <section
+                class="notes-panel"
+                *ngIf="(view.notes?.length ?? 0) > 0">
+
+                <h3 class="notes-header">
+                  Notes
+                </h3>
+
+                <div class="notes-list">
+
+                  <div
+                    class="note-item"
+                    *ngFor="let n of view.notes">
+
+                    <div class="note-text">
+
+                      {{ n.ATXR_LAST_UPD_DT | date:'MM/dd/yyyy' }}
+                      ({{ n.ATXR_LAST_UPD_USUS }})
+
+                      {{ n.text }}
+
+                    </div>
+
+                  </div>
+
+                </div>
+
+              </section>
+
+            </div>
+
+          </div>
+
+        </div>
+
+        <!-- Add Attachment Form -->
+        <div
+          class="overlay"
+          *ngIf="attachmentFormOpen"
+          (click)="closeAttachmentForm()"
+          (keydown.escape)="closeAttachmentForm()">
+
+          <div
+            class="modal"
+            role="dialog"
+            aria-modal="true"
+            [attr.aria-label]="'Form'"
+            (click)="$event.stopPropagation()"
+>
+
+            <div class="modal-header">
+
+              <h3 class="modal-title">
+                Add Attachment
+              </h3>
+
+              <button
+                type="button"
+                class="modal-close"
+                (click)="closeAttachmentForm()"
+                aria-label="Close"
+                title="close">
+
+                X
+
+              </button>
+
+            </div>
+
+            <br/>
+
+            <div class="modal-body">
+
+              <section class="form-grid">
+
+                <label for="id" class="half">
+                  Style
+                  <br/>
+
+                  <select
+                    [value]="attachmentForm!.atsyId"
+                    (change)="updateAttachmentForm('atsyId', $any($event.target).value)">
+
+                    <option
+                      value=""
+                      disabled
+                      [selected]="!attachmentForm!.atsyId">
+
+                      Select...
+
+                    </option>
+
+                    <option
+                      *ngFor="let fo of atsyData"
+                      [value]="fo['ATSY_ID']">
+
+                      {{ fo['ATSY_ID'] }} - {{ fo['ATSY_DESC'] }}
+
+                    </option>
+
+                  </select>
+
+                </label>
+
+                <label class="half">
+                  Mail to Date
+                  <br/>
+
+                  <input
+                    type="date"
+                    [value]="attachmentForm!.mailToDate"
+                    (change)="updateAttachmentForm('mailToDate', $any($event.target).value)"
+                    style="width:100%;">
+
+                </label>
+
+                <label for="note" class="full">
+
+                  Attachment Note
+                  <br/>
+
+                  <textarea
+                    rows="3"
+                    (input)="updateAttachmentForm('note', $any($event.target).value)"></textarea>
+
+                </label>
+
+                <label for="file" class="full">
+
+                  Upload File
+                  <br/>
+
+                  <input
+                    type="file"
+                    (change)="onFileSelect($event)">
+
+                </label>
+
+                <br/>
+
+                <label class="full">
+
+                  <button
+                    type="button"
+                    (click)="submitAttachmentForm()"
+                    [disabled]="!isAttachmentFormValid || attachmentFormSubmitting">
+
+                    Submit
+
+                  </button>
+
+                  <span
+                    class="submit-status"
+                    *ngIf="attachmentFormSubmitting">
+
+                    Submitting...
+
+                  </span>
+
+                </label>
+
+                <div class="full"></div>
+
+                <div
+                  *ngIf="attachmentFormError"
+                  class="full">
+
+                  {{ attachmentFormError }}
+
+                </div>
+
+              </section>
+
+            </div>
+
+          </div>
+
+        </div>
+
+        <!-- Add Note Form -->
+        <div
+          class="overlay"
+          *ngIf="noteFormOpen"
+          (click)="closeNoteForm()"
+          (keydown.escape)="closeNoteForm()">
+
+          <div
+            class="modal"
+            role="dialog"
+            aria-modal="true"
+            [attr.aria-label]="'Form'"
+            (click)="$event.stopPropagation()"
+>
+
+            <div class="modal-header">
+
+              <h3 class="modal-title">
+                Add Note to {{ noteFormAttachment!.directory }}/{{ noteFormAttachment!.filename }}
+              </h3>
+
+              <button
+                type="button"
+                class="modal-close"
+                (click)="closeNoteForm()"
+                aria-label="Close"
+                title="close">
+
+                X
+
+              </button>
+
+            </div>
+
+            <br/>
+
+            <div class="modal-body">
+
+              <section class="form-grid">
+
+                <label for="note" class="full">
+
+                  Attachment Note
+                  <br/>
+
+                  <textarea
+                    rows="4"
+                    (input)="updateNoteForm($any($event.target).value)"></textarea>
+
+                </label>
+
+                <br/>
+
+                <button
+                  type="button"
+                  class="quarter"
+                  [disabled]="!newNoteText || noteFormSubmitting"
+                  (click)="submitNoteForm()">
+
+                  Submit
+
+                </button>
+
+                <span
+                  *ngIf="noteFormSubmitting"
+                  class="quarter">
+
+                  Submitting...
+
+                </span>
+
+                <div class="full"></div>
+
+                <div *ngIf="noteFormError">
+                  Error: {{ noteFormError }}
+                  <br>
+                </div>
+
+              </section>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </ng-container>
+
+    </div>
+  </div>
+</div>

@@ -1,0 +1,11 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+    "FileshareConnectionString": "REPLACE_WITH_FILESHARE_CONNECTION_STRING",
+    "FileshareName": "REPLACE_WITH_FILESHARE_NAME",
+    "MaxFileSizeMB": "50",
+    "FacetsClaimAccessUrlTemplate": "https://your-facets-host/RestServices/facets/api/v1/claims/{claimId}"
+  }
+}
