@@ -34,7 +34,7 @@ export class ClaimAttachmentsComponent implements AngularCore.OnInit, AngularCor
   // Values redacted/replaced from screenshot for safety.
   private downloadFileUrl = 'https://example-download-url';
   private uploadFileUrl = 'https://example-upload-url';
-  private apimSubscriptionKey = '';
+  // private apimSubscriptionKey = '';
 
   claimData: any = {};
   syinData: any = {};
@@ -84,7 +84,7 @@ export class ClaimAttachmentsComponent implements AngularCore.OnInit, AngularCor
 
   private logAndFail(where: string, err: any) {
     const msg = this.stringifyError(err);
-    this.loggingService.LogMessage(3, `Error in ${where} - ${msg}`);
+    this.loggingService.logMessage(3, `Error in ${where} - ${msg}`);
     this.pageLoadError = `Failed to load ${where}: ${msg}`;
   }
 
@@ -94,7 +94,7 @@ export class ClaimAttachmentsComponent implements AngularCore.OnInit, AngularCor
     const refreshSub = this.panelEventService.panelEvents.subscribe({
       next: async (event: any) => {
         if (event.mcEventName === 'DeleteMovedLine' && this.claimData['CLCL_ID'] !== null) {
-          this.loggingService.LogMessage(0, 'Claim Attachments page reloaded');
+          this.loggingService.logMessage(0, 'Claim Attachments page reloaded');
           this.pageLoading = true;
           try {
             await this.loadPageData();
@@ -112,10 +112,10 @@ export class ClaimAttachmentsComponent implements AngularCore.OnInit, AngularCor
 
     const initSub = this.contextService.onContextLoaded.subscribe(async (ctx) => {
       try {
-        this.loggingService.LogMessage(0, 'Success response from context service in claims attachments extension.');
+        this.loggingService.logMessage(0, 'Success response from context service in claims attachments extension.');
 
         this.facetsServicesUri = ctx['FacetsServicesUri'];
-        this.configureApimAccess(ctx);
+        // this.configureApimAccess(ctx);
 
         const configResponse = await Rxjs.firstValueFrom(
           this.claimAttachmentsService.getConfig(
@@ -124,8 +124,8 @@ export class ClaimAttachmentsComponent implements AngularCore.OnInit, AngularCor
             { headers: this.buildAuthHeaders(this.authService.token) }
           )
         );
-        this.configureApimAccess(ctx, configResponse);
-        this.loggingService.LogMessage(0, 'Success response from config service in claim attachments extension');
+        // this.configureApimAccess(ctx, configResponse);
+        this.loggingService.logMessage(0, 'Success response from config service in claim attachments extension');
         await this.loadPageData();
       } catch (e) {
         this.logAndFail('initialization', e);
@@ -191,7 +191,7 @@ export class ClaimAttachmentsComponent implements AngularCore.OnInit, AngularCor
       this.linkNotes(this.attachmentData, noteMap);
       this.attachmentData = this.sortAttachments(this.attachmentData);
       this.pageLoadError = null;
-      this.loggingService.LogMessage(0, 'Attachment data loaded');
+      this.loggingService.logMessage(0, 'Attachment data loaded');
       this.cdr.detectChanges();
       return true;
     } catch (e) {
@@ -226,7 +226,7 @@ export class ClaimAttachmentsComponent implements AngularCore.OnInit, AngularCor
     const url = this.buildDownloadUrl(this.downloadFileUrl, att.filename, att.directory, this.getCurrentClaimId());
     const sub = this.claimAttachmentsService.getViaExternalService(url, {
       responseType: 'blob',
-      headers: this.buildApimHeaders(this.authService.token, false)
+      headers: this.buildAuthHeaders(this.authService.token, false)
     }).subscribe({
       next: (blob: Blob) => {
         const objectUrl = URL.createObjectURL(blob);
@@ -244,7 +244,7 @@ export class ClaimAttachmentsComponent implements AngularCore.OnInit, AngularCor
       },
       error: (e) => {
         const error = `Unable to load file: ${e.message}`;
-        this.loggingService.LogMessage(3, `Error: ${error}`);
+        this.loggingService.logMessage(3, `Error: ${error}`);
         this.view = {
           ...this.view,
           loading: false,
@@ -304,7 +304,7 @@ export class ClaimAttachmentsComponent implements AngularCore.OnInit, AngularCor
     return this.claimAttachmentsService.postViaExternalService(
       this.uploadFileUrl,
       formData,
-      { headers: this.buildApimHeaders(this.authService.token, false) }
+      { headers: this.buildAuthHeaders(this.authService.token, false) }
     );
   }
 
@@ -480,13 +480,13 @@ export class ClaimAttachmentsComponent implements AngularCore.OnInit, AngularCor
 
   async submitAttachmentForm() {
     if (!this.isAttachmentFormValid) return;
-    this.loggingService.LogMessage(0, 'Upload started.');
+    this.loggingService.logMessage(0, 'Upload started.');
     this.attachmentFormSubmitting = true;
     this.attachmentFormError = null;
 
     try {
       const filename = await this.uploadAttachmentForm();
-      this.loggingService.LogMessage(0, `Upload complete. Attachment File: ${filename}. Claim: ${this.claimData['CLCL_ID']}`);
+      this.loggingService.logMessage(0, `Upload complete. Attachment File: ${filename}. Claim: ${this.claimData['CLCL_ID']}`);
       const refreshed = await this.loadAttachmentDataREST();
       if (!refreshed) {
         throw new Error('Upload succeeded but attachment list refresh failed.');
@@ -501,7 +501,7 @@ export class ClaimAttachmentsComponent implements AngularCore.OnInit, AngularCor
       });
     } catch (err: any) {
       this.attachmentFormError = String(err?.message ?? err);
-      this.loggingService.LogMessage(3, `Error: ${this.attachmentFormError}`);
+      this.loggingService.logMessage(3, `Error: ${this.attachmentFormError}`);
       this.attachmentFormSubmitting = false;
     }
   }
@@ -583,12 +583,12 @@ export class ClaimAttachmentsComponent implements AngularCore.OnInit, AngularCor
 
   async submitNoteForm() {
     try {
-      this.loggingService.LogMessage(0, `Adding note to claim: ${this.claimData['CLCL_ID']}.`);
+      this.loggingService.logMessage(0, `Adding note to claim: ${this.claimData['CLCL_ID']}.`);
       this.noteFormSubmitting = true;
 
       const atxr_src = await this.ensureClclAtxrSourceId();
       await this.addNoteData$(atxr_src, this.noteFormAttachment!.ATXR_DEST_ID, '', this.noteAtsyId, this.newNoteText!, this.syinData['USUS_ID']);
-      this.loggingService.LogMessage(0, `Added note to claim: ${this.claimData['CLCL_ID']}.`);
+      this.loggingService.logMessage(0, `Added note to claim: ${this.claimData['CLCL_ID']}.`);
       const refreshed = await this.loadAttachmentDataREST();
       if (!refreshed) {
         throw new Error('Note saved but attachment list refresh failed.');
@@ -604,7 +604,7 @@ export class ClaimAttachmentsComponent implements AngularCore.OnInit, AngularCor
       });
     } catch (err: any) {
       this.noteFormError = String(err?.message ?? err);
-      this.loggingService.LogMessage(3, `Error: ${this.noteFormError}`);
+      this.loggingService.logMessage(3, `Error: ${this.noteFormError}`);
       this.noteFormSubmitting = false;
     }
   }
@@ -639,98 +639,96 @@ export class ClaimAttachmentsComponent implements AngularCore.OnInit, AngularCor
     return headers;
   }
 
-  private buildApimHeaders(token: string, asJson: boolean = true, contentType: string = ''): { key: string, value: string }[] {
-    const headers = this.buildAuthHeaders(token, asJson, contentType);
-    if (this.apimSubscriptionKey) {
-      headers.push({ key: 'Ocp-Apim-Subscription-Key', value: this.apimSubscriptionKey });
-    }
-    return headers;
-  }
+  // private buildApimHeaders(token: string, asJson: boolean = true, contentType: string = ''): { key: string, value: string }[] {
+  //   const headers = this.buildAuthHeaders(token, asJson, contentType);
+  //   if (this.apimSubscriptionKey) {
+  //     headers.push({ key: 'Ocp-Apim-Subscription-Key', value: this.apimSubscriptionKey });
+  //   }
+  //   return headers;
+  // }
 
-  private configureApimAccess(context: Record<string, any>, configPayload?: any): void {
-    const baseUrl = this.getSettingValue(context, configPayload, [
-      'ClaimAttachmentsApiBaseUrl',
-      'ClaimAttachmentApiBaseUrl',
-      'AttachmentsApiBaseUrl',
-      'ApimBaseUrl',
-      'ApiBaseUrl'
-    ]);
-    const downloadUrl = this.getSettingValue(context, configPayload, [
-      'ClaimAttachmentsDownloadUrl',
-      'ClaimAttachmentDownloadUrl',
-      'AttachmentsDownloadUrl',
-      'DownloadFileUrl',
-      'ClaimAttachmentsGetFileUrl',
-      'GetFileUrl'
-    ]);
-    const uploadUrl = this.getSettingValue(context, configPayload, [
-      'ClaimAttachmentsUploadUrl',
-      'ClaimAttachmentUploadUrl',
-      'AttachmentsUploadUrl',
-      'UploadFileUrl'
-    ]);
-    const apimSubKey = this.getSettingValue(context, configPayload, [
-      'ClaimAttachmentsApimSubscriptionKey',
-      'ClaimAttachmentApimSubscriptionKey',
-      'ApimSubscriptionKey',
-      'OcpApimSubscriptionKey',
-      'SubscriptionKey'
-    ]);
+  // private configureApimAccess(context: Record<string, any>, configPayload?: any): void {
+  //   const baseUrl = this.getSettingValue(context, configPayload, [
+  //     'ClaimAttachmentsApiBaseUrl',
+  //     'ClaimAttachmentApiBaseUrl',
+  //     'AttachmentsApiBaseUrl',
+  //     'ApimBaseUrl',
+  //     'ApiBaseUrl'
+  //   ]);
+  //   const downloadUrl = this.getSettingValue(context, configPayload, [
+  //     'ClaimAttachmentsDownloadUrl',
+  //     'ClaimAttachmentDownloadUrl',
+  //     'AttachmentsDownloadUrl',
+  //     'DownloadFileUrl',
+  //     'ClaimAttachmentsGetFileUrl',
+  //     'GetFileUrl'
+  //   ]);
+  //   const uploadUrl = this.getSettingValue(context, configPayload, [
+  //     'ClaimAttachmentsUploadUrl',
+  //     'ClaimAttachmentUploadUrl',
+  //     'AttachmentsUploadUrl',
+  //     'UploadFileUrl'
+  //   ]);
+  //   const apimSubKey = this.getSettingValue(context, configPayload, [
+  //     'ClaimAttachmentsApimSubscriptionKey',
+  //     'ClaimAttachmentApimSubscriptionKey',
+  //     'ApimSubscriptionKey',
+  //     'OcpApimSubscriptionKey',
+  //     'SubscriptionKey'
+  //   ]);
+  //
+  //   if (baseUrl) {
+  //     const normalizedBaseUrl = baseUrl.replace(/\/+$/, '');
+  //     this.downloadFileUrl = `${normalizedBaseUrl}/facets/GetFile`;
+  //     this.uploadFileUrl = `${normalizedBaseUrl}/facets/upload`;
+  //   }
+  //   if (downloadUrl) this.downloadFileUrl = downloadUrl;
+  //   if (uploadUrl) this.uploadFileUrl = uploadUrl;
+  //   if (apimSubKey) this.apimSubscriptionKey = apimSubKey;
+  // }
 
-    if (baseUrl) {
-      const normalizedBaseUrl = baseUrl.replace(/\/+$/, '');
-      this.downloadFileUrl = `${normalizedBaseUrl}/facets/GetFile`;
-      this.uploadFileUrl = `${normalizedBaseUrl}/facets/upload`;
-    }
-    if (downloadUrl) this.downloadFileUrl = downloadUrl;
-    if (uploadUrl) this.uploadFileUrl = uploadUrl;
-    if (apimSubKey) this.apimSubscriptionKey = apimSubKey;
-  }
+  // private getSettingValue(context: Record<string, any>, configPayload: any, keys: string[]): string {
+  //   for (const key of keys) {
+  //     const contextValue = this.findValueByKey(context, key);
+  //     const payloadValue = this.findValueByKey(configPayload, key);
+  //
+  //     const resolvedValue = this.toSettingString(contextValue)
+  //       || this.toSettingString(payloadValue);
+  //     if (resolvedValue) return resolvedValue;
+  //   }
+  //
+  //   return '';
+  // }
 
-  private getSettingValue(context: Record<string, any>, configPayload: any, keys: string[]): string {
-    for (const key of keys) {
-      const contextValue = this.findValueByKey(context, key);
-      const configServiceValue = this.configService.get<string>(key);
-      const payloadValue = this.findValueByKey(configPayload, key);
+  // private findValueByKey(source: any, targetKey: string, depth = 0): unknown {
+  //   if (!source || typeof source !== 'object' || depth > 6) return undefined;
+  //
+  //   const normalizedTarget = this.normalizeSettingKey(targetKey);
+  //   const entries = Object.entries(source as Record<string, unknown>);
+  //   for (const [key, value] of entries) {
+  //     if (this.normalizeSettingKey(key) === normalizedTarget) {
+  //       return value;
+  //     }
+  //   }
+  //
+  //   for (const value of Object.values(source as Record<string, unknown>)) {
+  //     if (value && typeof value === 'object') {
+  //       const nestedValue = this.findValueByKey(value, targetKey, depth + 1);
+  //       if (nestedValue !== undefined) return nestedValue;
+  //     }
+  //   }
+  //
+  //   return undefined;
+  // }
 
-      const resolvedValue = this.toSettingString(contextValue)
-        || this.toSettingString(configServiceValue)
-        || this.toSettingString(payloadValue);
-      if (resolvedValue) return resolvedValue;
-    }
+  // private normalizeSettingKey(value: string): string {
+  //   return (value ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  // }
 
-    return '';
-  }
-
-  private findValueByKey(source: any, targetKey: string, depth = 0): unknown {
-    if (!source || typeof source !== 'object' || depth > 6) return undefined;
-
-    const normalizedTarget = this.normalizeSettingKey(targetKey);
-    const entries = Object.entries(source as Record<string, unknown>);
-    for (const [key, value] of entries) {
-      if (this.normalizeSettingKey(key) === normalizedTarget) {
-        return value;
-      }
-    }
-
-    for (const value of Object.values(source as Record<string, unknown>)) {
-      if (value && typeof value === 'object') {
-        const nestedValue = this.findValueByKey(value, targetKey, depth + 1);
-        if (nestedValue !== undefined) return nestedValue;
-      }
-    }
-
-    return undefined;
-  }
-
-  private normalizeSettingKey(value: string): string {
-    return (value ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
-  }
-
-  private toSettingString(value: unknown): string {
-    if (typeof value !== 'string') return '';
-    return value.trim();
-  }
+  // private toSettingString(value: unknown): string {
+  //   if (typeof value !== 'string') return '';
+  //   return value.trim();
+  // }
 
   nowLocalISOString(): string {
     const d = new Date();
@@ -838,7 +836,7 @@ export class ClaimAttachmentsComponent implements AngularCore.OnInit, AngularCor
 
   async spInvokeProm(proc: string, params: Record<string, any>): Promise<any> {
     const resp = await Rxjs.firstValueFrom(this.claimAttachmentsService.spInvoke(proc, params));
-    this.loggingService.LogMessage(0, `SpInvoke called on '${proc}'`);
+    this.loggingService.logMessage(0, `SpInvoke called on '${proc}'`);
     return resp['Data']['ResultSets'][0]['Rows'];
   }
 }
