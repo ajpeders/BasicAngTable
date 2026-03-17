@@ -34,7 +34,7 @@ export class ClaimAttachmentsComponent implements AngularCore.OnInit, AngularCor
   // Values redacted/replaced from screenshot for safety.
   private downloadFileUrl = 'https://example-download-url';
   private uploadFileUrl = 'https://example-upload-url';
-  // private apimSubscriptionKey = '';
+  private apimSubscriptionKey = '';
 
   claimData: any = {};
   syinData: any = {};
@@ -91,25 +91,6 @@ export class ClaimAttachmentsComponent implements AngularCore.OnInit, AngularCor
   async ngOnInit(): Promise<void> {
     this.pageLoading = true;
 
-    const refreshSub = this.panelEventService.panelEvents.subscribe({
-      next: async (event: any) => {
-        if (event.mcEventName === 'DeleteMovedLine' && this.claimData['CLCL_ID'] !== null) {
-          this.loggingService.logMessage(0, 'Claim Attachments page reloaded');
-          this.pageLoading = true;
-          try {
-            await this.loadPageData();
-          } catch (e) {
-            this.logAndFail('reload', e);
-          } finally {
-            this.pageLoading = false;
-            this.cdr.detectChanges();
-          }
-        }
-      },
-      error: (e) => this.logAndFail('reload', e),
-    });
-    this.pushSub(refreshSub);
-
     const initSub = this.contextService.onContextLoaded.subscribe(async (ctx) => {
       try {
         this.loggingService.logMessage(0, 'Success response from context service in claims attachments extension.');
@@ -117,16 +98,36 @@ export class ClaimAttachmentsComponent implements AngularCore.OnInit, AngularCor
         this.facetsServicesUri = ctx['FacetsServicesUri'];
         // this.configureApimAccess(ctx);
 
-        const configResponse = await Rxjs.firstValueFrom(
-          this.claimAttachmentsService.getConfig(
-            ctx['FacetsServicesUri'],
-            ctx['Region'],
-            { headers: this.buildAuthHeaders(this.authService.token) }
-          )
-        );
-        // this.configureApimAccess(ctx, configResponse);
-        this.loggingService.logMessage(0, 'Success response from config service in claim attachments extension');
-        await this.loadPageData();
+        const cfgSub = this.claimAttachmentsService.getConfig(
+          ctx['FacetsServicesUri'],
+          ctx['Region'],
+          { headers: this.buildAuthHeaders(this.authService.token) }
+        ).subscribe({
+          next: async (configResponse) => {
+            // this.configureApimAccess(ctx, configResponse);
+            this.loggingService.logMessage(0, 'Success response from config service in claim attachments extension');
+            await this.loadPageData();
+            this.pageLoading = false;
+            this.cdr.detectChanges();
+          },
+          error: (e) => this.logAndFail('config', e)
+        });
+        this.pushSub(cfgSub);
+
+        const refreshSub = this.panelEventService.panelEvents.subscribe({
+          next: async (event: any) => {
+            if (event.mcEventName === 'DeleteMovedLine' && this.claimData['CLCL_ID'] !== null) {
+              this.loggingService.logMessage(0, 'Claim Attachments page reloaded');
+              this.pageLoading = true;
+              await this.loadPageData();
+              this.pageLoading = false;
+              this.cdr.detectChanges();
+            }
+          },
+          error: (e) => this.logAndFail('reload', e),
+        });
+        this.pushSub(refreshSub);
+
       } catch (e) {
         this.logAndFail('initialization', e);
       } finally {
@@ -141,10 +142,10 @@ export class ClaimAttachmentsComponent implements AngularCore.OnInit, AngularCor
   async loadPageData() {
     try {
       this.claimData = await this.dataIO.getData('CLCL');
-      this.syinData = await this.dataIO.getData('SCTXT_SYIN');
+      this.syinData = await this.dataIO.getData('$CTXT_SYIN');
 
       this.atsyData = await this.spInvokeProm(
-        'CERSP_ATSY_SEARCH/ATTB_ID',
+        'CERSP_ATSY_SEARCH_ATTB_ID',
         { ATTB_ID: 'ATDT' }
       );
 
@@ -223,10 +224,12 @@ export class ClaimAttachmentsComponent implements AngularCore.OnInit, AngularCor
     this.revoke(prevView.iframeBlobUrl);
     this.revoke(prevView.downloadUrl);
 
-    const url = this.buildDownloadUrl(this.downloadFileUrl, att.filename, att.directory, this.getCurrentClaimId());
+    const claimId = this.getCurrentClaimId();
+    console.log('[ClaimAttachments] openFile claimData=', JSON.stringify(this.claimData), 'claimId=', claimId);
+    const url = this.buildDownloadUrl(this.downloadFileUrl, att.filename, att.directory, claimId);
     const sub = this.claimAttachmentsService.getViaExternalService(url, {
       responseType: 'blob',
-      headers: this.buildAuthHeaders(this.authService.token, false)
+      headers: this.buildApimHeaders(this.authService.token, false)
     }).subscribe({
       next: (blob: Blob) => {
         const objectUrl = URL.createObjectURL(blob);
@@ -304,7 +307,7 @@ export class ClaimAttachmentsComponent implements AngularCore.OnInit, AngularCor
     return this.claimAttachmentsService.postViaExternalService(
       this.uploadFileUrl,
       formData,
-      { headers: this.buildAuthHeaders(this.authService.token, false) }
+      { headers: this.buildApimHeaders(this.authService.token, false) }
     );
   }
 
@@ -511,11 +514,12 @@ export class ClaimAttachmentsComponent implements AngularCore.OnInit, AngularCor
     const file = this.attachmentForm!.file!;
     const ususId = this.syinData?.USUS_ID ?? '';
     const claimId = this.getCurrentClaimId();
+    console.log('[ClaimAttachments] uploadAttachmentForm claimData=', JSON.stringify(this.claimData), 'claimId=', claimId);
     const mailToDate = this.attachmentForm!.mailToDate;
     const noteText = (this.attachmentForm!.note || '').trim();
 
     const upload = await Rxjs.firstValueFrom(this.uploadFile$(file, atsyId, ususId, claimId));
-    const storedFilename = upload?.filename ?? upload?.Filename ?? file.name;
+    const storedFilename = upload?.filename ?? upload?.Filename ?? upload?.data?.filename ?? upload?.data?.Filename ?? file.name;
 
     const atxr_src = await this.ensureClclAtxrSourceId();
     const atxr_dest_atdt = await this.addAtdtData$(atxr_src, storedFilename, atsyId, ususId);
@@ -639,13 +643,13 @@ export class ClaimAttachmentsComponent implements AngularCore.OnInit, AngularCor
     return headers;
   }
 
-  // private buildApimHeaders(token: string, asJson: boolean = true, contentType: string = ''): { key: string, value: string }[] {
-  //   const headers = this.buildAuthHeaders(token, asJson, contentType);
-  //   if (this.apimSubscriptionKey) {
-  //     headers.push({ key: 'Ocp-Apim-Subscription-Key', value: this.apimSubscriptionKey });
-  //   }
-  //   return headers;
-  // }
+  private buildApimHeaders(token: string, asJson: boolean = true, contentType: string = ''): { key: string, value: string }[] {
+    const headers = this.buildAuthHeaders(token, asJson, contentType);
+    if (this.apimSubscriptionKey) {
+      headers.push({ key: 'Ocp-Apim-Subscription-Key', value: this.apimSubscriptionKey });
+    }
+    return headers;
+  }
 
   // private configureApimAccess(context: Record<string, any>, configPayload?: any): void {
   //   const baseUrl = this.getSettingValue(context, configPayload, [
@@ -690,9 +694,11 @@ export class ClaimAttachmentsComponent implements AngularCore.OnInit, AngularCor
   // private getSettingValue(context: Record<string, any>, configPayload: any, keys: string[]): string {
   //   for (const key of keys) {
   //     const contextValue = this.findValueByKey(context, key);
+  //     const configServiceValue = this.configService.get<string>(key);
   //     const payloadValue = this.findValueByKey(configPayload, key);
   //
   //     const resolvedValue = this.toSettingString(contextValue)
+  //       || this.toSettingString(configServiceValue)
   //       || this.toSettingString(payloadValue);
   //     if (resolvedValue) return resolvedValue;
   //   }
