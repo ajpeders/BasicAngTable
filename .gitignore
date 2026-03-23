@@ -7,5 +7,10 @@ obj/
 .vscode/
 local.settings.json
 backend/local.settings.json
+backend/Secrets/
 coverage/
 apim_quick_test.local.ps1
+mock-server/
+frontend/src/
+frontend/proxy.conf.json
+frontend/tsconfig.app.json

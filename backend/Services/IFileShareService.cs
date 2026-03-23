@@ -8,6 +8,7 @@ namespace ClaimAttachmentsApi.Services
     public interface IFileShareService
     {
         Task<HttpResponseData> CreateErrorResponseAsync(HttpRequestData req, HttpStatusCode statusCode, OperationInfoLog opLog);
+        ShareClient GetShareClient();
         ShareDirectoryClient GetSharedDirectoryClient(string directory);
         bool ValidateSize(long fileSizeBytes);
     }

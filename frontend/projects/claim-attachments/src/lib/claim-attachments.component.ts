@@ -96,7 +96,6 @@ export class ClaimAttachmentsComponent implements AngularCore.OnInit, AngularCor
         this.loggingService.logMessage(0, 'Success response from context service in claims attachments extension.');
 
         this.facetsServicesUri = ctx['FacetsServicesUri'];
-        // this.configureApimAccess(ctx);
 
         const cfgSub = this.claimAttachmentsService.getConfig(
           ctx['FacetsServicesUri'],
@@ -104,7 +103,7 @@ export class ClaimAttachmentsComponent implements AngularCore.OnInit, AngularCor
           { headers: this.buildAuthHeaders(this.authService.token) }
         ).subscribe({
           next: async (configResponse) => {
-            // this.configureApimAccess(ctx, configResponse);
+            this.configureApimAccess(ctx, configResponse);
             this.loggingService.logMessage(0, 'Success response from config service in claim attachments extension');
             await this.loadPageData();
             this.pageLoading = false;
@@ -651,90 +650,10 @@ export class ClaimAttachmentsComponent implements AngularCore.OnInit, AngularCor
     return headers;
   }
 
-  // private configureApimAccess(context: Record<string, any>, configPayload?: any): void {
-  //   const baseUrl = this.getSettingValue(context, configPayload, [
-  //     'ClaimAttachmentsApiBaseUrl',
-  //     'ClaimAttachmentApiBaseUrl',
-  //     'AttachmentsApiBaseUrl',
-  //     'ApimBaseUrl',
-  //     'ApiBaseUrl'
-  //   ]);
-  //   const downloadUrl = this.getSettingValue(context, configPayload, [
-  //     'ClaimAttachmentsDownloadUrl',
-  //     'ClaimAttachmentDownloadUrl',
-  //     'AttachmentsDownloadUrl',
-  //     'DownloadFileUrl',
-  //     'ClaimAttachmentsGetFileUrl',
-  //     'GetFileUrl'
-  //   ]);
-  //   const uploadUrl = this.getSettingValue(context, configPayload, [
-  //     'ClaimAttachmentsUploadUrl',
-  //     'ClaimAttachmentUploadUrl',
-  //     'AttachmentsUploadUrl',
-  //     'UploadFileUrl'
-  //   ]);
-  //   const apimSubKey = this.getSettingValue(context, configPayload, [
-  //     'ClaimAttachmentsApimSubscriptionKey',
-  //     'ClaimAttachmentApimSubscriptionKey',
-  //     'ApimSubscriptionKey',
-  //     'OcpApimSubscriptionKey',
-  //     'SubscriptionKey'
-  //   ]);
-  //
-  //   if (baseUrl) {
-  //     const normalizedBaseUrl = baseUrl.replace(/\/+$/, '');
-  //     this.downloadFileUrl = `${normalizedBaseUrl}/facets/GetFile`;
-  //     this.uploadFileUrl = `${normalizedBaseUrl}/facets/upload`;
-  //   }
-  //   if (downloadUrl) this.downloadFileUrl = downloadUrl;
-  //   if (uploadUrl) this.uploadFileUrl = uploadUrl;
-  //   if (apimSubKey) this.apimSubscriptionKey = apimSubKey;
-  // }
-
-  // private getSettingValue(context: Record<string, any>, configPayload: any, keys: string[]): string {
-  //   for (const key of keys) {
-  //     const contextValue = this.findValueByKey(context, key);
-  //     const configServiceValue = this.configService.get<string>(key);
-  //     const payloadValue = this.findValueByKey(configPayload, key);
-  //
-  //     const resolvedValue = this.toSettingString(contextValue)
-  //       || this.toSettingString(configServiceValue)
-  //       || this.toSettingString(payloadValue);
-  //     if (resolvedValue) return resolvedValue;
-  //   }
-  //
-  //   return '';
-  // }
-
-  // private findValueByKey(source: any, targetKey: string, depth = 0): unknown {
-  //   if (!source || typeof source !== 'object' || depth > 6) return undefined;
-  //
-  //   const normalizedTarget = this.normalizeSettingKey(targetKey);
-  //   const entries = Object.entries(source as Record<string, unknown>);
-  //   for (const [key, value] of entries) {
-  //     if (this.normalizeSettingKey(key) === normalizedTarget) {
-  //       return value;
-  //     }
-  //   }
-  //
-  //   for (const value of Object.values(source as Record<string, unknown>)) {
-  //     if (value && typeof value === 'object') {
-  //       const nestedValue = this.findValueByKey(value, targetKey, depth + 1);
-  //       if (nestedValue !== undefined) return nestedValue;
-  //     }
-  //   }
-  //
-  //   return undefined;
-  // }
-
-  // private normalizeSettingKey(value: string): string {
-  //   return (value ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
-  // }
-
-  // private toSettingString(value: unknown): string {
-  //   if (typeof value !== 'string') return '';
-  //   return value.trim();
-  // }
+  // TODO: populate apimSubscriptionKey, downloadFileUrl, and uploadFileUrl
+  // from context / configPayload once the key delivery mechanism is confirmed.
+  private configureApimAccess(_context: Record<string, any>, _configPayload?: any): void {
+  }
 
   nowLocalISOString(): string {
     const d = new Date();

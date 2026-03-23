@@ -1,13 +1,14 @@
+using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
-using System.Net.Http.Headers;
 
 namespace ClaimAttachmentsApi.Services
 {
     public class FacetsService : IFacetsService
     {
         private readonly HttpClient _httpClient;
+        private readonly string _facetsOpenAccessUrl;
         private readonly string _claimAccessUrlTemplate;
         private readonly ILogger<FacetsService> _logger;
 
@@ -15,8 +16,12 @@ namespace ClaimAttachmentsApi.Services
         {
             _httpClient = httpClient;
             _logger = logger;
+
+            _facetsOpenAccessUrl = Environment.GetEnvironmentVariable("FacetsOpenAccessUrl")
+                ?? throw new NullReferenceException("Missing \"FacetsOpenAccessUrl\"");
+
             _claimAccessUrlTemplate = Environment.GetEnvironmentVariable("FacetsClaimAccessUrlTemplate")
-                ?? string.Empty;
+                ?? throw new NullReferenceException("Missing \"FacetsClaimAccessUrlTemplate\"");
         }
 
         public async Task<bool> ValidateClaimAccessAsync(string token, string claimId)
@@ -44,18 +49,13 @@ namespace ClaimAttachmentsApi.Services
 
         private string BuildClaimAccessUrl(string claimId)
         {
-            if (string.IsNullOrWhiteSpace(_claimAccessUrlTemplate))
-            {
-                throw new InvalidOperationException("Missing FacetsClaimAccessUrlTemplate environment variable.");
-            }
-
             if (!_claimAccessUrlTemplate.Contains("{claimId}", StringComparison.OrdinalIgnoreCase))
             {
                 throw new InvalidOperationException(
                     "FacetsClaimAccessUrlTemplate must contain the {claimId} placeholder.");
             }
 
-            return _claimAccessUrlTemplate.Replace(
+            return _facetsOpenAccessUrl + _claimAccessUrlTemplate.Replace(
                 "{claimId}",
                 Uri.EscapeDataString(claimId),
                 StringComparison.OrdinalIgnoreCase);
@@ -84,9 +84,12 @@ namespace ClaimAttachmentsApi.Services
                     .Replace('_', '/');
 
                 var padded = payload.PadRight(
-                    payload.Length + (4 - payload.Length % 4) % 4, '=');
+                    payload.Length + (4 - payload.Length % 4) % 4,
+                    '=');
+
                 var json = Encoding.UTF8.GetString(Convert.FromBase64String(padded));
                 var claims = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json);
+
                 if (claims is null)
                 {
                     _logger.LogWarning("Unable to parse JWT claims: payload deserialized to null.");

@@ -8,7 +8,7 @@ namespace ClaimAttachmentsApi.Services
 {
     public class FileShareService : IFileShareService
     {
-        private readonly string _fileshareConnectionString;
+        private readonly string _fileShareConnectionString;
         private readonly string _fileShareName;
         private readonly int _maxFileSizeMB;
         private readonly ShareClient _shareClient;
@@ -17,19 +17,21 @@ namespace ClaimAttachmentsApi.Services
         public FileShareService(ILogger<FileShareService> logger)
         {
             _logger = logger;
-            _fileshareConnectionString = Environment.GetEnvironmentVariable("FileshareConnectionString")
-                ?? throw new NullReferenceException("Missing \"FileshareConnectionString\"");
+
+            _fileShareConnectionString = Environment.GetEnvironmentVariable("ConnectionStrings__AzureWebJobsStorage")
+                ?? throw new NullReferenceException("Missing \"ConnectionStrings__AzureWebJobsStorage\"");
 
             _fileShareName = Environment.GetEnvironmentVariable("FileshareName")
-                ?? throw new NullReferenceException("Missing \"Fileshare\"");
+                ?? throw new NullReferenceException("Missing \"FileshareName\"");
 
             if (!int.TryParse(Environment.GetEnvironmentVariable("MaxFileSizeMB"), out _maxFileSizeMB))
             {
-                _maxFileSizeMB = 50;
+                const int defaultMaxFileSizeMB = 50;
+                _maxFileSizeMB = defaultMaxFileSizeMB;
                 _logger.LogWarning("MaxFileSizeMB is missing or invalid. Using default of {DefaultMaxFileSizeMB} MB.", _maxFileSizeMB);
             }
 
-            _shareClient = new ShareServiceClient(_fileshareConnectionString)
+            _shareClient = new ShareServiceClient(_fileShareConnectionString)
                 .GetShareClient(_fileShareName);
         }
 
@@ -47,10 +49,16 @@ namespace ClaimAttachmentsApi.Services
                 time = opLog.Time,
                 ususId = opLog.USUS_ID,
                 region = opLog.Region,
-                FileInfo = opLog.FileInfo
+                fileInfo = opLog.FileInfo
             };
+
             await res.WriteAsJsonAsync(errorRes);
             return res;
+        }
+
+        public ShareClient GetShareClient()
+        {
+            return _shareClient;
         }
 
         public ShareDirectoryClient GetSharedDirectoryClient(string directory)
@@ -61,6 +69,7 @@ namespace ClaimAttachmentsApi.Services
         public bool ValidateSize(long fileSizeBytes)
         {
             if (fileSizeBytes <= 0) return false;
+
             var fileSizeMB = FileShareServiceHelpers.GetFileSizeMB(fileSizeBytes);
             return fileSizeMB <= _maxFileSizeMB;
         }
