@@ -129,7 +129,6 @@ export class ClaimAttachmentsComponent implements AngularCore.OnInit, AngularCor
 
       } catch (e) {
         this.logAndFail('initialization', e);
-      } finally {
         this.pageLoading = false;
         this.cdr.detectChanges();
       }
@@ -224,7 +223,6 @@ export class ClaimAttachmentsComponent implements AngularCore.OnInit, AngularCor
     this.revoke(prevView.downloadUrl);
 
     const claimId = this.getCurrentClaimId();
-    console.log('[ClaimAttachments] openFile claimData=', JSON.stringify(this.claimData), 'claimId=', claimId);
     const url = this.buildDownloadUrl(this.downloadFileUrl, att.filename, att.directory, claimId);
     const sub = this.claimAttachmentsService.getViaExternalService(url, {
       responseType: 'blob',
@@ -513,7 +511,6 @@ export class ClaimAttachmentsComponent implements AngularCore.OnInit, AngularCor
     const file = this.attachmentForm!.file!;
     const ususId = this.syinData?.USUS_ID ?? '';
     const claimId = this.getCurrentClaimId();
-    console.log('[ClaimAttachments] uploadAttachmentForm claimData=', JSON.stringify(this.claimData), 'claimId=', claimId);
     const mailToDate = this.attachmentForm!.mailToDate;
     const noteText = (this.attachmentForm!.note || '').trim();
 
