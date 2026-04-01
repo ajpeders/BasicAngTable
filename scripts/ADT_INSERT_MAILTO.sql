@@ -14,6 +14,13 @@ BEGIN
             @NoteAtsyId      VARCHAR(10) = 'ATMO',
             @Timestamp       VARCHAR(30)
 
+    -- Ensure sequence row exists for this connection's SPID.
+    IF NOT EXISTS (SELECT 1 FROM Facets..CER_SEQS_SEQUENCE WHERE SEQS_SPID = @@SPID % 2000)
+    BEGIN
+        INSERT INTO Facets..CER_SEQS_SEQUENCE (SEQS_SPID, SEQS_CURRENT_DTM)
+        VALUES (@@SPID % 2000, GETDATE())
+    END
+
     DECLARE cur CURSOR LOCAL FAST_FORWARD FOR
         SELECT
               ATXR_DEST_ID
