@@ -118,6 +118,10 @@ WHERE
 
     foreach ($f in $files) {
         if (Test-Path -LiteralPath $f["SRC"]) {
+            $destDir = [System.IO.Path]::GetDirectoryName($f["DEST"])
+            if (-not (Test-Path -LiteralPath $destDir)) {
+                New-Item -ItemType Directory -Path $destDir -Force | Out-Null
+            }
             Move-Item -LiteralPath $f["SRC"] -Destination $f["DEST"]
             $moved += 1
         }
