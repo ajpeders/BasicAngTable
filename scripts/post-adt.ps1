@@ -47,44 +47,35 @@ function Update-ATDValidation-Post {
 UPDATE BLOG
 SET
     StatusMessage = CASE
-        WHEN ATDT.ATDT_DATA IS NULL THEN 'Stage Error'
+        WHEN FA.ATDT_DATA IS NULL THEN 'Stage Error'
         ELSE 'Staged'
     END,
     ErrorMessage = CASE
-        WHEN ATDT.ATDT_DATA IS NULL THEN 'ATDT_DATA not found.'
+        WHEN FA.ATDT_DATA IS NULL THEN 'ATDT_DATA not found.'
         ELSE NULL
     END,
     AttachmentLoaded = CASE
-        WHEN ATDT.ATDT_DATA IS NULL THEN 0
+        WHEN FA.ATDT_DATA IS NULL THEN 0
         ELSE 1
     END,
     LoadDate = CASE
-        WHEN ATDT.ATDT_DATA IS NOT NULL THEN ATDT.ATXR_CREATE_DT
+        WHEN FA.ATDT_DATA IS NOT NULL THEN FA.ATXR_CREATE_DT
         ELSE NULL
     END,
-    ATXR_DEST_ID = CASE
-        WHEN ATDT.ATXR_DEST_ID IS NOT NULL THEN ATDT.ATXR_DEST_ID
-        ELSE NULL
-    END,
-    ATXR_SOURCE_ID = CASE
-        WHEN ATDT.ATXR_SOURCE_ID IS NOT NULL THEN ATDT.ATXR_SOURCE_ID
-        ELSE NULL
-    END,
-    MailToDateLoaded = CASE
-        WHEN ATNT.ATXR_DEST_ID IS NOT NULL THEN 1
-        ELSE 0
-    END,
+    ATXR_DEST_ID = FA.ATXR_DEST_ID,
+    ATXR_SOURCE_ID = FA.ATXR_SOURCE_ID,
+    MailToDateLoaded = 0,
     DestinationDirectoryPath = CASE
-        WHEN ATDT.ATDT_DATA IS NOT NULL THEN CONCAT('$($RootDirectoryPath)', '\', BLOG.ATLD_ID)
+        WHEN FA.ATDT_DATA IS NOT NULL THEN CONCAT('$($RootDirectoryPath.Replace("'","''"))', '\', BLOG.ATLD_ID)
         ELSE CONCAT(BLOG.SourceDirectoryPath, '\Error')
     END
 FROM FacetsEXT..ATDT_BATCH_LOG BLOG
 LEFT JOIN (
     SELECT DISTINCT
-          CCL.CLCL_ID
+          CLCL.CLCL_ID
         , ATDT.ATDT_DATA
         , ATDT.ATSY_ID
-        , ATDT.ATLD_ID
+        , ATDT.ATDL_ID AS ATLD_ID
         , ATXR.ATXR_CREATE_DT
         , ATXR.ATXR_DEST_ID
         , ATXR.ATXR_SOURCE_ID
@@ -93,15 +84,12 @@ LEFT JOIN (
         ON (ATXR.ATXR_SOURCE_ID = CLCL.ATXR_SOURCE_ID)
     JOIN Facets..CER_ATDT_DATA_D ATDT
         ON (ATDT.ATXR_DEST_ID = ATXR.ATXR_DEST_ID)
-) AS ATDT
-    ON (ATDT.CLCL_ID   = BLOG.CLCL_ID
-    AND ATDT.ATDT_DATA = BLOG.ATDT_DATA
-    AND ATDT.ATLD_ID   = BLOG.ATLD_ID
-    AND ATDT.ATSY_ID   = BLOG.ATSY_ID)
-LEFT JOIN Facets..CER_ATNT_DATA_D ATNT
-    ON (ATNT.ATXR_DEST_ID = ATDT.ATXR_DEST_ID
-    AND ATNT.ATNT_TYPE    = 'ATMD')
-WHERE StatusMessage = 'Validated'
+) AS FA
+    ON (FA.CLCL_ID   = BLOG.CLCL_ID
+    AND FA.ATDT_DATA = BLOG.ATDT_DATA
+    AND FA.ATLD_ID   = BLOG.ATLD_ID
+    AND FA.ATSY_ID   = BLOG.ATSY_ID)
+WHERE BLOG.StatusMessage = 'Validated'
 "@
 
     Invoke-SQL -DataSource $Datasource -Database $Database -SqlCommand $sqlCommand
