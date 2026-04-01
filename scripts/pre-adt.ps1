@@ -202,7 +202,7 @@ function Add-FilesToStaging {
         }
 
         $sqlCommand = @"
-INSERT INTO FacetsEXT..ATTD_BATCH_LOG (
+INSERT INTO FacetsEXT..ATDT_BATCH_LOG (
     CLCL_ID, InputDate, BaseFilename, ATSY_ID, ATLD_ID, FilenameAppend, SourceDirectoryPath, AttachmentLoaded, Extension, StatusMessage, MailToDate
 )
 VALUES
@@ -232,7 +232,7 @@ SET
         WHEN ATSY.ATSY_ID IS NULL THEN 'ATSY_ID not found'
         ELSE NULL
     END,
-    ATTD_DATA = CONCAT(BLOG.BaseFilename, '_', BLOG.FilenameAppend, BLOG.Extension),
+    ATDT_DATA = CONCAT(BLOG.BaseFilename, '_', BLOG.FilenameAppend, BLOG.Extension),
     ATSY_DESC = ATSY.ATSY_DESC,
     DestinationDirectoryPath = CASE
         WHEN
@@ -242,7 +242,7 @@ SET
         THEN CONCAT(BLOG.SourceDirectoryPath, '\Error')
         ELSE NULL
     END
-FROM FacetsEXT..ATTD_BATCH_LOG BLOG
+FROM FacetsEXT..ATDT_BATCH_LOG BLOG
 LEFT JOIN Facets..CMC_CLCL_CLAIM CCL
     ON CCL.CLCL_ID = BLOG.CLCL_ID
 LEFT JOIN Facets..CER_ATXR_CLAIM ATLD
@@ -261,9 +261,9 @@ function Generate-KeywordFile {
 SELECT
     CLCL_ID
   , ATLD_ID
-  , ATTD_DATA
+  , ATDT_DATA
 FROM
-    FacetsEXT..ATTD_BATCH_LOG BLOG
+    FacetsEXT..ATDT_BATCH_LOG BLOG
 WHERE
     StatusMessage = 'Validated'
 "@
@@ -282,7 +282,7 @@ WHERE
     <ATLD_ID>$($r["ATLD_ID"])</ATLD_ID>
     <FA_RECORD_TYPE> </FA_RECORD_TYPE>
     <KEY_DATA_CLCL_ID>$($r["CLCL_ID"])</KEY_DATA_CLCL_ID>
-    <ATTD_DATA>$($r["ATTD_DATA"])</ATTD_DATA>
+    <ATDT_DATA>$($r["ATDT_DATA"])</ATDT_DATA>
     <ATTX_DESC>Claim Attachment - Batch</ATTX_DESC>
 </INPUT_RECORD>
 "@)

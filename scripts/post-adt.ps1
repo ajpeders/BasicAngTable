@@ -78,7 +78,7 @@ SET
         WHEN ATDT.ATDT_DATA IS NOT NULL THEN CONCAT('$($RootDirectoryPath)', '\', BLOG.ATLD_ID)
         ELSE CONCAT(BLOG.SourceDirectoryPath, '\Error')
     END
-FROM FacetsEXT..ATTD_BATCH_LOG BLOG
+FROM FacetsEXT..ATDT_BATCH_LOG BLOG
 LEFT JOIN (
     SELECT DISTINCT
           CCL.CLCL_ID
@@ -96,7 +96,7 @@ LEFT JOIN (
         ON (ATDT.ATXR_DEST_ID = ATXR.ATXR_DEST_ID)
 ) AS ATDT
     ON (ATDT.CLCL_ID   = BLOG.CLCL_ID
-    AND ATDT.ATDT_DATA = BLOG.ATTD_DATA
+    AND ATDT.ATDT_DATA = BLOG.ATDT_DATA
     AND ATDT.ATLD_ID   = BLOG.ATLD_ID
     AND ATDT.ATSY_ID   = BLOG.ATSY_ID)
 LEFT JOIN Facets..CER_ATNT_DATA_D ATNT
@@ -112,9 +112,9 @@ function Move-Files {
     $sqlCommand = @"
 SELECT
       SRC  = CONCAT(SourceDirectoryPath, '\', BaseFilename, Extension)
-    , DEST = CONCAT(DestinationDirectoryPath, '\', ATTD_DATA)
+    , DEST = CONCAT(DestinationDirectoryPath, '\', ATDT_DATA)
 FROM
-    FacetsEXT..ATTD_BATCH_LOG
+    FacetsEXT..ATDT_BATCH_LOG
 WHERE
     StatusMessage IN ('Loaded', 'Stage Error')
 "@
@@ -177,7 +177,7 @@ function Move-IndexFilesToHistory {
     Write-Host "Index file moved to history: $dest"
 }
 
-function Update-ATTDEndLog {
+function Update-ATDTEndLog {
     $sqlCommand = @"
 UPDATE BLOG
 SET
@@ -190,7 +190,7 @@ SET
         WHEN StatusMessage = 'Staged' AND MailToDate IS NOT NULL AND MailToDateLoaded = 0 THEN 'MailToDate note not inserted'
         ELSE ErrorMessage
     END
-FROM FacetsEXT..ATTD_BATCH_LOG BLOG
+FROM FacetsEXT..ATDT_BATCH_LOG BLOG
 WHERE StatusMessage IN ('Staged', 'Stage Error')
 "@
 
@@ -217,7 +217,7 @@ try {
     Invoke-SQL -DataSource $Datasource -Database $Database -SqlCommand "EXEC FacetsEXT..ADT_INSERT_MAILTO"
 
     # Step 3: Update log.
-    Update-ATTDEndLog
+    Update-ATDTEndLog
 
     # Step 4: Move files.
     Move-Files

@@ -22,9 +22,9 @@ BEGIN
               ATXR_DEST_ID
             , ATXR_SOURCE_ID
             , ATSY_ID
-            , ATTD_DATA
+            , ATDT_DATA
             , MailToDate
-        FROM FacetsEXT..ATTD_BATCH_LOG
+        FROM FacetsEXT..ATDT_BATCH_LOG
         WHERE StatusMessage    = 'Staged'
           AND MailToDate       IS NOT NULL
           AND MailToDateLoaded = 0
@@ -87,10 +87,10 @@ BEGIN
             @ATND_TEXT      = @NoteText
 
         -- Mark as loaded.
-        UPDATE FacetsEXT..ATTD_BATCH_LOG
+        UPDATE FacetsEXT..ATDT_BATCH_LOG
         SET MailToDateLoaded = 1
         WHERE ATXR_DEST_ID = @ATXR_DEST_ID
-          AND ATTD_DATA    = @ATDT_DATA
+          AND ATDT_DATA    = @ATDT_DATA
 
         FETCH NEXT FROM cur INTO @ATXR_DEST_ID, @ATXR_SOURCE_ID, @ATSY_ID, @ATDT_DATA, @MailToDate
     END

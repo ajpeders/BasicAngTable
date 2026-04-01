@@ -6,7 +6,7 @@ BEGIN
     -- Finds any rows that have a MailToDate but never got the note inserted,
     -- regardless of status. Resets them to 'Staged' so ADT_INSERT_MAILTO can
     -- pick them up on the next run.
-    UPDATE FacetsEXT..ATTD_BATCH_LOG
+    UPDATE FacetsEXT..ATDT_BATCH_LOG
     SET StatusMessage    = 'Staged',
         MailToDateLoaded = 0
     WHERE MailToDate       IS NOT NULL
