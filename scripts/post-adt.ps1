@@ -28,6 +28,14 @@ function Invoke-SQL {
     $conn = New-Object System.Data.SqlClient.SqlConnection
     $conn.ConnectionString = "Data Source=$DataSource; Integrated Security=SSPI; Initial Catalog=$Database"
 
+    # Capture PRINT output from stored procedures.
+    $printMessages = [System.Collections.Generic.List[string]]::new()
+    $conn.add_InfoMessage([System.Data.SqlClient.SqlInfoMessageEventHandler]{
+        param($s, $e)
+        $printMessages.Add($e.Message)
+    })
+    $conn.FireInfoMessageEventOnUserErrors = $true
+
     $cmd = $conn.CreateCommand()
     $cmd.CommandText = $SqlCommand
     $conn.Open()
@@ -44,6 +52,9 @@ function Invoke-SQL {
         $rowsAffected = $cmd.ExecuteNonQuery()
         $conn.Close()
         Write-Host "  SQL: $rowsAffected row(s) affected."
+        foreach ($msg in $printMessages) {
+            Write-Host "  SP> $msg"
+        }
     }
 }
 
@@ -243,10 +254,38 @@ GROUP BY StatusMessage
     Update-ATDValidation-Post
     Write-Host "Step 1: Done."
 
+    # Diagnostic: Show what the MailToDate cursor will find.
+    Write-Host ""
+    Write-Host "--- MAILTO CURSOR DIAGNOSTIC ---"
+    $mailDiag = Invoke-SQL -DataSource $Datasource -Database $Database -SqlCommand @"
+SELECT ATDT_DATA, ATXR_DEST_ID, ATXR_SOURCE_ID, ATSY_ID, MailToDate, MailToDateLoaded, StatusMessage
+FROM FacetsEXT..ATDT_BATCH_LOG
+WHERE StatusMessage = 'Staged'
+"@
+    foreach ($row in $mailDiag) {
+        Write-Host "  ATDT=$($row['ATDT_DATA'])  DEST=$($row['ATXR_DEST_ID'])  SRC=$($row['ATXR_SOURCE_ID'])  MailTo=$($row['MailToDate'])  Loaded=$($row['MailToDateLoaded'])"
+    }
+    Write-Host "--------------------------------"
+    Write-Host ""
+
     # Step 2: Insert MailToDate notes.
     Write-Host "Step 2: Inserting MailToDate notes..."
     Invoke-SQL -DataSource $Datasource -Database $Database -SqlCommand "EXEC FacetsEXT..ADT_INSERT_MAILTO"
     Write-Host "Step 2: Done."
+
+    # Diagnostic: Check MailToDateLoaded after proc.
+    Write-Host ""
+    Write-Host "--- POST-MAILTO DIAGNOSTIC ---"
+    $mailPost = Invoke-SQL -DataSource $Datasource -Database $Database -SqlCommand @"
+SELECT ATDT_DATA, MailToDateLoaded, StatusMessage
+FROM FacetsEXT..ATDT_BATCH_LOG
+WHERE StatusMessage = 'Staged'
+"@
+    foreach ($row in $mailPost) {
+        Write-Host "  ATDT=$($row['ATDT_DATA'])  MailToDateLoaded=$($row['MailToDateLoaded'])  Status=$($row['StatusMessage'])"
+    }
+    Write-Host "------------------------------"
+    Write-Host ""
 
     # Step 3: Update log.
     Write-Host "Step 3: Updating end log..."
