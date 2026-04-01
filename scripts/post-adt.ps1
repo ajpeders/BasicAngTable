@@ -35,9 +35,10 @@ function Invoke-SQL {
     $dt = New-Object System.Data.DataTable
 
     $conn.Open()
-    $adapter.Fill($dt) | Out-Null
+    $rowsAffected = $adapter.Fill($dt)
     $conn.Close()
 
+    Write-Host "  SQL: $rowsAffected row(s) affected."
     return $dt
 }
 
@@ -75,7 +76,7 @@ LEFT JOIN (
           CLCL.CLCL_ID
         , ATDT.ATDT_DATA
         , ATDT.ATSY_ID
-        , ATDT.ATDL_ID AS ATLD_ID
+        , ATDT.ATLD_ID
         , ATXR.ATXR_CREATE_DT
         , ATXR.ATXR_DEST_ID
         , ATXR.ATXR_SOURCE_ID
@@ -181,6 +182,7 @@ FROM FacetsEXT..ATDT_BATCH_LOG BLOG
 WHERE StatusMessage IN ('Staged', 'Stage Error')
 "@
 
+    Write-Host "  End log query targeting StatusMessage IN ('Staged', 'Stage Error')..."
     Invoke-SQL -DataSource $Datasource -Database $Database -SqlCommand $sqlCommand
 }
 
@@ -189,6 +191,8 @@ WHERE StatusMessage IN ('Staged', 'Stage Error')
 # ----------------------------
 
 try {
+    Write-Host "=== post-adt START ==="
+
     if (-not (Test-Path -LiteralPath $RootDirectoryPath -PathType Container)) {
         throw "Directory not found: $RootDirectoryPath"
     }
@@ -197,25 +201,39 @@ try {
         throw "Directory not found: $StageDirectoryPath"
     }
 
+    Write-Host "Directories validated."
+
     # Step 1: Validate load.
+    Write-Host "Step 1: Validating attachment load..."
     Update-ATDValidation-Post
+    Write-Host "Step 1: Done."
 
     # Step 2: Insert MailToDate notes.
+    Write-Host "Step 2: Inserting MailToDate notes..."
     Invoke-SQL -DataSource $Datasource -Database $Database -SqlCommand "EXEC FacetsEXT..ADT_INSERT_MAILTO"
+    Write-Host "Step 2: Done."
 
     # Step 3: Update log.
+    Write-Host "Step 3: Updating end log..."
     Update-ATDTEndLog
+    Write-Host "Step 3: Done."
 
     # Step 4: Move files.
+    Write-Host "Step 4: Moving files..."
     Move-Files
 
     # Step 5: Move keyword file to history.
+    Write-Host "Step 5: Moving keyword file to history..."
     Move-KeywordFileToHistory
 
     # Step 6: Move index files to history.
+    Write-Host "Step 6: Moving index files to history..."
     Move-IndexFilesToHistory
 
+    Write-Host "=== post-adt COMPLETE ==="
 }
 catch {
+    Write-Host "ERROR: $_" -ForegroundColor Red
+    Write-Host $_.ScriptStackTrace -ForegroundColor Red
     throw $_
 }
