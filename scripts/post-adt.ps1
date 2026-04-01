@@ -104,7 +104,7 @@ SELECT
 FROM
     FacetsEXT..ATDT_BATCH_LOG
 WHERE
-    StatusMessage IN ('Loaded', 'Stage Error')
+    StatusMessage = 'Loaded'
 "@
 
     $files = @(Invoke-SQL -DataSource $Datasource -Database "FacetsEXT" -SqlCommand $sqlCommand)
@@ -128,6 +128,16 @@ WHERE
     }
 
     Write-Host "Moved $moved files out of $($files.Count) total."
+}
+
+function Update-StatusComplete {
+    $sqlCommand = @"
+UPDATE FacetsEXT..ATDT_BATCH_LOG
+SET StatusMessage = 'Complete'
+WHERE StatusMessage = 'Loaded'
+"@
+
+    Invoke-SQL -DataSource $Datasource -Database $Database -SqlCommand $sqlCommand
 }
 
 function Move-KeywordFileToHistory {
@@ -233,6 +243,11 @@ try {
     # Step 6: Move index files to history.
     Write-Host "Step 6: Moving index files to history..."
     Move-IndexFilesToHistory
+
+    # Step 7: Mark all processed rows as Complete.
+    Write-Host "Step 7: Marking rows as Complete..."
+    Update-StatusComplete
+    Write-Host "Step 7: Done."
 
     Write-Host "=== post-adt COMPLETE ==="
 }
