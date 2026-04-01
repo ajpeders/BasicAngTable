@@ -64,7 +64,7 @@ BEGIN
         )
 
         -- Step 2: Insert ATXR cross-reference for the note.
-        INSERT INTO Facets..CER_ATXR_ATTACHLU (
+        INSERT INTO Facets..CER_ATXR_ATTACH_U (
             ATXR_SOURCE_ID, ATXR_DEST_ID, ATSY_ID, ATTB_ID, ATTB_TYPE,
             ATXR_DESC, ATXR_CREATE_DT, ATXR_CREATE_USUS,
             ATXR_LAST_UPD_DT, ATXR_LAST_UPD_USUS, ATXR_COMPILED_KEY
