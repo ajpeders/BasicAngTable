@@ -91,7 +91,7 @@ function Get-FilesFromDisk {
 
     $files = foreach ($dir in $subdirs) {
         Get-ChildItem -LiteralPath $dir.FullName |
-            Where-Object { -not $_.PSIsContainer } |
+            Where-Object { -not $_.PSIsContainer -and $_.Name -ne 'mailDate.txt' } |
             ForEach-Object {
                 $baseName = [System.IO.Path]::GetFileNameWithoutExtension($_.Name)
                 $claimId = if ($baseName.Length -ge 12) { $baseName.Substring(0,12) } else { $null }
@@ -112,40 +112,70 @@ function Get-FilesFromDisk {
 }
 
 # Step 1c: Reads index file per subdirectory and overrides MailToDate on matching files.
-# Falls back to existing MailToDate (CreationTime) for files not found in the index.
-# TODO: update index file name and parse logic once format is known.
+# Files not in index are moved to Error folder and excluded from processing.
+# Index entries with no matching file are logged to a file in the Error folder.
+# Index format: pipe-delimited, quoted cells, with header row.
+# Key columns: ClaimNo, LetterID (filename = {ClaimNo}_{LetterID}), ShipDate.
 function Get-MailToDateFromIndex {
     param (
         [Parameter(Mandatory)]
         [object[]] $Files
     )
 
-    $byDir = $Files | Group-Object -Property SourceDirectoryPath
+    $matched = [System.Collections.Generic.List[object]]::new()
+    $indexPath = Join-Path $StageDirectoryPath 'mailDate.txt'
+    if (-not (Test-Path -LiteralPath $indexPath)) {
+        Write-Warning "mailDate.txt not found in $StageDirectoryPath — skipping MailToDate override."
+        return $Files
+    }
 
-    foreach ($group in $byDir) {
-        $indexPath = Join-Path $group.Name 'index.csv'  # TODO: update filename
-        if (-not (Test-Path -LiteralPath $indexPath)) { continue }
+    $index   = Import-Csv -LiteralPath $indexPath -Delimiter '|'
+    $dateMap = @{}
+    foreach ($row in $index) {
+        $key = "$($row.ClaimNo)_$($row.LetterID)"
+        if ($row.ShipDate) { $dateMap[$key] = [datetime]$row.ShipDate }
+    }
 
-        # TODO: parse index file - map filename -> MailToDate
-        # $index  = Import-Csv -LiteralPath $indexPath
-        # $dateMap = @{}
-        # foreach ($row in $index) { $dateMap[$row.Filename] = [datetime]$row.MailToDate }
+    $errorDir = Join-Path $StageDirectoryPath 'Error'
+    $fileKeys = [System.Collections.Generic.HashSet[string]]::new()
 
-        foreach ($file in $group.Group) {
-            # if ($dateMap.ContainsKey($file.BaseFilename)) {
-            #     $file.MailToDate = $dateMap[$file.BaseFilename]
-            # }
+    foreach ($file in $Files) {
+        $null = $fileKeys.Add($file.BaseFilename)
+        if ($dateMap.ContainsKey($file.BaseFilename)) {
+            $file.MailToDate = $dateMap[$file.BaseFilename]
+            $matched.Add($file)
+        } else {
+            Write-Warning "File '$($file.BaseFilename)' not in index — moving to Error."
+            if (-not (Test-Path -LiteralPath $errorDir)) {
+                New-Item -ItemType Directory -Path $errorDir | Out-Null
+            }
+            $src = Join-Path $file.SourceDirectoryPath "$($file.BaseFilename)$($file.Extension)"
+            if (Test-Path -LiteralPath $src) {
+                Move-Item -LiteralPath $src -Destination $errorDir
+            }
         }
     }
 
-    return $Files
+    $orphans = @($dateMap.Keys | Where-Object { -not $fileKeys.Contains($_) })
+    if ($orphans.Count -gt 0) {
+        if (-not (Test-Path -LiteralPath $errorDir)) {
+            New-Item -ItemType Directory -Path $errorDir | Out-Null
+        }
+        $timestamp = (Get-Date).ToString("MMddyyyy_HHmmss")
+        $logPath   = Join-Path $errorDir "index_orphans_${timestamp}.log"
+        $orphans | ForEach-Object { "Index entry with no file on disk: $_" } |
+            Set-Content -LiteralPath $logPath -Encoding UTF8
+        Write-Warning "$($orphans.Count) index entries have no matching file — see $logPath"
+    }
+
+    return $matched
 }
 
 # Step 2: Insert files into staging table
 function Add-FilesToStaging {
     param (
         [Parameter(Mandatory)]
-        [System.Collections.Generic.List[object]] $Files,
+        [object[]] $Files,
         [Parameter(Mandatory)]
         [datetime] $InputDate
     )
@@ -310,6 +340,8 @@ try {
     Write-Host "Generated keyword file for $($recordCount) attachments."
 }
 catch {
+    Write-Host "ERROR: $_" -ForegroundColor Red
+    Write-Host $_.ScriptStackTrace -ForegroundColor Red
     '<tagRoot></tagRoot>' | Set-Content -LiteralPath (Join-Path $KeywordDirectoryPath $KeywordFilename) -Encoding UTF8
     throw $_
 }

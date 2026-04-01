@@ -159,6 +159,24 @@ function Move-KeywordFileToHistory {
     Write-Host "Keyword file moved to history: $dest"
 }
 
+function Move-IndexFilesToHistory {
+    $src = Join-Path $StageDirectoryPath 'mailDate.txt'
+    if (-not (Test-Path -LiteralPath $src)) {
+        Write-Host "mailDate.txt not found, skipping history move."
+        return
+    }
+
+    $historyPath = Join-Path $StageDirectoryPath 'history'
+    if (-not (Test-Path -LiteralPath $historyPath)) {
+        New-Item -ItemType Directory -Path $historyPath | Out-Null
+    }
+
+    $timestamp = (Get-Date).ToString("MMddyyyy_HHmmss")
+    $dest = Join-Path $historyPath "mailDate_${timestamp}.txt"
+    Move-Item -LiteralPath $src -Destination $dest
+    Write-Host "Index file moved to history: $dest"
+}
+
 function Update-ATTDEndLog {
     $sqlCommand = @"
 UPDATE BLOG
@@ -206,6 +224,9 @@ try {
 
     # Step 5: Move keyword file to history.
     Move-KeywordFileToHistory
+
+    # Step 6: Move index files to history.
+    Move-IndexFilesToHistory
 
 }
 catch {
