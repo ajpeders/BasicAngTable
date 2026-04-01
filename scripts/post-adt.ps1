@@ -189,19 +189,17 @@ function Update-ATDTEndLog {
 UPDATE BLOG
 SET
     StatusMessage = CASE
-        WHEN StatusMessage = 'Staged' AND (MailToDate IS NULL OR MailToDateLoaded = 1) THEN 'Loaded'
-        WHEN StatusMessage = 'Staged' AND MailToDate IS NOT NULL AND MailToDateLoaded = 0 THEN 'Stage Error'
-        ELSE 'Stage Error'
+        WHEN StatusMessage = 'Staged' THEN 'Loaded'
+        ELSE StatusMessage
     END,
     ErrorMessage = CASE
-        WHEN StatusMessage = 'Staged' AND MailToDate IS NOT NULL AND MailToDateLoaded = 0 THEN 'MailToDate note not inserted'
+        WHEN StatusMessage = 'Staged' AND MailToDate IS NOT NULL AND MailToDateLoaded = 0 THEN 'MailToDate note pending'
         ELSE ErrorMessage
     END
 FROM FacetsEXT..ATDT_BATCH_LOG BLOG
-WHERE StatusMessage IN ('Staged', 'Stage Error')
+WHERE StatusMessage = 'Staged'
 "@
 
-    Write-Host "  End log query targeting StatusMessage IN ('Staged', 'Stage Error')..."
     Invoke-SQL -DataSource $Datasource -Database $Database -SqlCommand $sqlCommand
 }
 

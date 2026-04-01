@@ -12,7 +12,8 @@ BEGIN
             @NoteDestId      DATETIME,
             @UsusId          VARCHAR(20) = 'BATCH_SVC',
             @NoteAtsyId      VARCHAR(10) = 'ATMO',
-            @Timestamp       VARCHAR(30)
+            @Timestamp       VARCHAR(30),
+            @RowCount        INT = 0
 
     -- Ensure sequence row exists for this connection's SPID.
     IF NOT EXISTS (SELECT 1 FROM Facets..CER_SEQS_SEQUENCE WHERE SEQS_SPID = @@SPID % 2000)
@@ -38,12 +39,19 @@ BEGIN
     OPEN cur
     FETCH NEXT FROM cur INTO @ATXR_DEST_ID, @ATXR_SOURCE_ID, @ATSY_ID, @ATDT_DATA, @MailToDate
 
+    IF @@FETCH_STATUS <> 0
+        PRINT 'ADT_INSERT_MAILTO: cursor found 0 rows.'
+
     WHILE @@FETCH_STATUS = 0
     BEGIN
         SET @NoteText  = 'MailToDate for ' + @ATDT_DATA + ': ' + CONVERT(VARCHAR(10), @MailToDate, 101)
         SET @Timestamp = CONVERT(VARCHAR(30), GETDATE(), 126)
 
+        PRINT 'Processing: ' + @ATDT_DATA + ' | ATXR_DEST=' + ISNULL(@ATXR_DEST_ID,'NULL') + ' | ATXR_SRC=' + ISNULL(@ATXR_SOURCE_ID,'NULL')
+
         -- Generate new ATXR_DEST_ID from sequence table.
+        SET @NoteDestId = NULL
+
         UPDATE Facets..CER_SEQS_SEQUENCE
         SET SEQS_CURRENT_DTM = SEQS_CURRENT_DTM
         WHERE SEQS_SPID = @@SPID % 2000
@@ -54,6 +62,7 @@ BEGIN
 
         IF @NoteDestId IS NULL
         BEGIN
+            PRINT 'SKIPPED (no sequence): ' + @ATDT_DATA
             FETCH NEXT FROM cur INTO @ATXR_DEST_ID, @ATXR_SOURCE_ID, @ATSY_ID, @ATDT_DATA, @MailToDate
             CONTINUE
         END
@@ -96,9 +105,14 @@ BEGIN
         WHERE ATXR_DEST_ID = @ATXR_DEST_ID
           AND ATDT_DATA    = @ATDT_DATA
 
+        SET @RowCount = @RowCount + 1
+        PRINT 'INSERTED note for: ' + @ATDT_DATA
+
         FETCH NEXT FROM cur INTO @ATXR_DEST_ID, @ATXR_SOURCE_ID, @ATSY_ID, @ATDT_DATA, @MailToDate
     END
 
     CLOSE cur
     DEALLOCATE cur
+
+    PRINT 'ADT_INSERT_MAILTO: processed ' + CAST(@RowCount AS VARCHAR(10)) + ' row(s).'
 END
