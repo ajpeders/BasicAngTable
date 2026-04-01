@@ -9,13 +9,10 @@ BEGIN
             @ATDT_DATA       VARCHAR(255),
             @MailToDate      DATE,
             @NoteText        VARCHAR(300),
-            @NoteDestId      VARCHAR(50),
+            @NoteDestId      DATETIME,
             @UsusId          VARCHAR(20) = 'BATCH_SVC',
             @NoteAtsyId      VARCHAR(10) = 'ATMO',
-            @DefaultDestId   VARCHAR(50) = '1753-01-01T00:00:00',
             @Timestamp       VARCHAR(30)
-
-    CREATE TABLE #GenResult (COL1 VARCHAR(50), COL2 VARCHAR(50), COL3 VARCHAR(50))
 
     DECLARE cur CURSOR LOCAL FAST_FORWARD FOR
         SELECT
@@ -39,16 +36,14 @@ BEGIN
         SET @NoteText  = 'MailToDate for ' + @ATDT_DATA + ': ' + CONVERT(VARCHAR(10), @MailToDate, 101)
         SET @Timestamp = CONVERT(VARCHAR(30), GETDATE(), 126)
 
-        -- Step 1: Generate new ATXR_DEST_ID for the note.
-        DELETE FROM #GenResult
+        -- Generate new ATXR_DEST_ID from sequence table.
+        UPDATE Facets..CER_SEQS_SEQUENCE
+        SET SEQS_CURRENT_DTM = SEQS_CURRENT_DTM
+        WHERE SEQS_SPID = @@SPID % 2000
 
-        INSERT INTO #GenResult
-        EXEC Facets..CERSP_ATT0_SELECT_GEN_IDS
-            @ATXR_SOURCE_ID = @ATXR_SOURCE_ID,
-            @ATSY_ID        = 'ATDT',
-            @ATXR_DEST_ID   = @DefaultDestId
-
-        SELECT TOP 1 @NoteDestId = COL3 FROM #GenResult
+        SELECT @NoteDestId = DATEADD(MILLISECOND, 10, SEQS_CURRENT_DTM)
+        FROM Facets..CER_SEQS_SEQUENCE
+        WHERE SEQS_SPID = @@SPID % 2000
 
         IF @NoteDestId IS NULL
         BEGIN
@@ -56,35 +51,37 @@ BEGIN
             CONTINUE
         END
 
-        -- Step 2: CERSP_ATNT_APPLY — create the note type record.
-        EXEC Facets..CERSP_ATNT_APPLY
-            @ATSY_ID        = @NoteAtsyId,
-            @ATXR_DEST_ID   = @NoteDestId,
-            @ATNT_SEQ_NO    = 0,
-            @ATNT_TYPE      = 'ATMD',
-            @ATXR_ATTACH_ID = @ATXR_DEST_ID
+        UPDATE Facets..CER_SEQS_SEQUENCE
+        SET SEQS_CURRENT_DTM = @NoteDestId
+        WHERE SEQS_SPID = @@SPID % 2000
 
-        -- Step 3: CERSP_ATXR_APPLY — create the cross-reference for the note.
-        EXEC Facets..CERSP_ATXR_APPLY
-            @ATXR_SOURCE_ID      = @ATXR_SOURCE_ID,
-            @ATXR_DEST_ID        = @NoteDestId,
-            @ATSY_ID             = @ATSY_ID,
-            @ATTB_ID             = 'CLCL',
-            @ATTB_TYPE           = 'S',
-            @ATXR_DESC           = 'Claim Attachment Note',
-            @ATXR_CREATE_DT      = @Timestamp,
-            @ATXR_CREATE_USUS    = @UsusId,
-            @ATXR_LAST_UPD_DT    = @Timestamp,
-            @ATXR_LAST_UPD_USUS  = @UsusId,
-            @ATXR_COMPILED_KEY   = ''
+        -- Step 1: Insert ATNT note type record.
+        INSERT INTO Facets..CER_ATNT_DATA_D (
+            ATSY_ID, ATXR_DEST_ID, ATNT_SEQ_NO, ATNT_TYPE, ATXR_ATTACH_ID
+        )
+        VALUES (
+            @NoteAtsyId, @NoteDestId, 0, 'ATMD', @ATXR_DEST_ID
+        )
 
-        -- Step 4: CERSP_ATND_APPLY — insert the note text.
-        EXEC Facets..CERSP_ATND_APPLY
-            @ATSY_ID        = @NoteAtsyId,
-            @ATXR_DEST_ID   = @NoteDestId,
-            @ATNT_SEQ_NO    = 0,
-            @ATND_SEQ_NO    = 0,
-            @ATND_TEXT      = @NoteText
+        -- Step 2: Insert ATXR cross-reference for the note.
+        INSERT INTO Facets..CER_ATXR_ATTACHLU (
+            ATXR_SOURCE_ID, ATXR_DEST_ID, ATSY_ID, ATTB_ID, ATTB_TYPE,
+            ATXR_DESC, ATXR_CREATE_DT, ATXR_CREATE_USUS,
+            ATXR_LAST_UPD_DT, ATXR_LAST_UPD_USUS, ATXR_COMPILED_KEY
+        )
+        VALUES (
+            @ATXR_SOURCE_ID, @NoteDestId, @ATSY_ID, 'CLCL', 'S',
+            'Claim Attachment Note', @Timestamp, @UsusId,
+            @Timestamp, @UsusId, ''
+        )
+
+        -- Step 3: Insert ATND note text.
+        INSERT INTO Facets..CER_ATND_DATA_D (
+            ATSY_ID, ATXR_DEST_ID, ATNT_SEQ_NO, ATND_SEQ_NO, ATND_TEXT
+        )
+        VALUES (
+            @NoteAtsyId, @NoteDestId, 0, 0, @NoteText
+        )
 
         -- Mark as loaded.
         UPDATE FacetsEXT..ATDT_BATCH_LOG
@@ -97,5 +94,4 @@ BEGIN
 
     CLOSE cur
     DEALLOCATE cur
-    DROP TABLE #GenResult
 END

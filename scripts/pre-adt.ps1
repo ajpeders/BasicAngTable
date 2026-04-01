@@ -145,14 +145,9 @@ function Get-MailToDateFromIndex {
             $file.MailToDate = $dateMap[$file.BaseFilename]
             $matched.Add($file)
         } else {
-            Write-Warning "File '$($file.BaseFilename)' not in index — moving to Error."
-            if (-not (Test-Path -LiteralPath $errorDir)) {
-                New-Item -ItemType Directory -Path $errorDir | Out-Null
-            }
-            $src = Join-Path $file.SourceDirectoryPath "$($file.BaseFilename)$($file.Extension)"
-            if (Test-Path -LiteralPath $src) {
-                Move-Item -LiteralPath $src -Destination $errorDir
-            }
+            Write-Warning "File '$($file.BaseFilename)' not in index — defaulting MailToDate to today."
+            $file.MailToDate = (Get-Date).Date
+            $matched.Add($file)
         }
     }
 
