@@ -74,12 +74,12 @@ BEGIN
         INSERT INTO Facets..CER_ATXR_ATTACH_U (
             ATXR_SOURCE_ID, ATXR_DEST_ID, ATSY_ID, ATTB_ID, ATTB_TYPE,
             ATXR_DESC, ATXR_CREATE_DT, ATXR_CREATE_USUS,
-            ATXR_LAST_UPD_DT, ATXR_LAST_UPD_USUS, ATXR_COMPILED_KEY
+            ATXR_LAST_UPD_DT, ATXR_LAST_UPD_USUS, ATXR_COMPILED_KEY, ATXR_LOCK_TOKEN
         )
         VALUES (
             @ATXR_SOURCE_ID, @NoteDestId, @ATSY_ID, 'CLCL', 'S',
             'Claim Attachment Note', @Timestamp, @UsusId,
-            @Timestamp, @UsusId, ''
+            @Timestamp, @UsusId, '', 1
         )
 
         -- Step 3: Insert ATND note text.
