@@ -56,31 +56,31 @@ BEGIN
         WHERE SEQS_SPID = @@SPID % 2000
 
         -- Step 1: Insert ATNT note type record.
-        INSERT INTO Facets..CER_ATNT_DATA_D (
-            ATSY_ID, ATXR_DEST_ID, ATNT_SEQ_NO, ATNT_TYPE, ATXR_ATTACH_ID
+        INSERT INTO Facets..CER_ATNT_NOTE_D (
+            ATSY_ID, ATXR_DEST_ID, ATNT_SEQ_NO, ATNT_TYPE, ATXR_ATTACH_ID, ATNT_LOCK_TOKEN
         )
         VALUES (
-            @NoteAtsyId, @NoteDestId, 0, 'ATMD', @ATXR_DEST_ID
+            @NoteAtsyId, @NoteDestId, 0, 'ATMD', @ATXR_DEST_ID, 1
         )
 
         -- Step 2: Insert ATXR cross-reference for the note.
         INSERT INTO Facets..CER_ATXR_ATTACH_U (
             ATXR_SOURCE_ID, ATXR_DEST_ID, ATSY_ID, ATTB_ID, ATTB_TYPE,
             ATXR_DESC, ATXR_CREATE_DT, ATXR_CREATE_USUS,
-            ATXR_LAST_UPD_DT, ATXR_LAST_UPD_USUS, ATXR_COMPILED_KEY
+            ATXR_LAST_UPD_DT, ATXR_LAST_UPD_USUS, ATXR_COMPILED_KEY, ATXR_LOCK_TOKEN
         )
         VALUES (
             @ATXR_SOURCE_ID, @NoteDestId, @ATSY_ID, 'CLCL', 'S',
             'Claim Attachment Note', @Timestamp, @UsusId,
-            @Timestamp, @UsusId, ''
+            @Timestamp, @UsusId, '', 1
         )
 
         -- Step 3: Insert ATND note text.
-        INSERT INTO Facets..CER_ATND_DATA_D (
-            ATSY_ID, ATXR_DEST_ID, ATNT_SEQ_NO, ATND_SEQ_NO, ATND_TEXT
+        INSERT INTO Facets..CER_ATND_NOTE_C (
+            ATSY_ID, ATXR_DEST_ID, ATNT_SEQ_NO, ATND_SEQ_NO, ATND_TEXT, ATND_LOCK_TOKEN
         )
         VALUES (
-            @NoteAtsyId, @NoteDestId, 0, 0, @NoteText
+            @NoteAtsyId, @NoteDestId, 0, 0, CONVERT(VARBINARY(MAX), @NoteText), 1
         )
 
         -- Mark as loaded.
