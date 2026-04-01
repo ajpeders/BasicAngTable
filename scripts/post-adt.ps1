@@ -82,7 +82,6 @@ FROM FacetsEXT..ATDT_BATCH_LOG BLOG
 LEFT JOIN (
     SELECT DISTINCT
           CCL.CLCL_ID
-        , ATDT.ATDT_DEST_ID
         , ATDT.ATDT_DATA
         , ATDT.ATSY_ID
         , ATDT.ATLD_ID
