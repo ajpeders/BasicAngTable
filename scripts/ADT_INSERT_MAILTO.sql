@@ -3,8 +3,8 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    DECLARE @ATXR_DEST_ID    VARCHAR(50),
-            @ATXR_SOURCE_ID  VARCHAR(50),
+    DECLARE @ATXR_DEST_ID    DATETIME,
+            @ATXR_SOURCE_ID  DATETIME,
             @ATSY_ID         VARCHAR(10),
             @ATDT_DATA       VARCHAR(255),
             @MailToDate      DATE,
@@ -13,7 +13,8 @@ BEGIN
             @UsusId          VARCHAR(20) = 'BATCH_SVC',
             @NoteAtsyId      VARCHAR(10) = 'ATMO',
             @Timestamp       VARCHAR(30),
-            @RowCount        INT = 0
+            @RowCount        INT = 0,
+            @UpdateCount     INT = 0
 
     -- Ensure sequence row exists for this connection's SPID.
     IF NOT EXISTS (SELECT 1 FROM Facets..CER_SEQS_SEQUENCE WHERE SEQS_SPID = @@SPID % 2000)
@@ -47,7 +48,7 @@ BEGIN
         SET @NoteText  = 'MailToDate for ' + @ATDT_DATA + ': ' + CONVERT(VARCHAR(10), @MailToDate, 101)
         SET @Timestamp = CONVERT(VARCHAR(30), GETDATE(), 126)
 
-        PRINT 'Processing: ' + @ATDT_DATA + ' | ATXR_DEST=' + ISNULL(@ATXR_DEST_ID,'NULL') + ' | ATXR_SRC=' + ISNULL(@ATXR_SOURCE_ID,'NULL')
+        PRINT 'Processing: ' + @ATDT_DATA + ' | ATXR_DEST=' + CONVERT(VARCHAR(30), @ATXR_DEST_ID, 126) + ' | ATXR_SRC=' + CONVERT(VARCHAR(30), @ATXR_SOURCE_ID, 126)
 
         -- Generate new ATXR_DEST_ID from sequence table.
         SET @NoteDestId = NULL
@@ -105,8 +106,10 @@ BEGIN
         WHERE ATXR_DEST_ID = @ATXR_DEST_ID
           AND ATDT_DATA    = @ATDT_DATA
 
+        SET @UpdateCount = @@ROWCOUNT
+        PRINT 'MailToDateLoaded UPDATE matched ' + CAST(@UpdateCount AS VARCHAR(10)) + ' row(s) for: ' + @ATDT_DATA
+
         SET @RowCount = @RowCount + 1
-        PRINT 'INSERTED note for: ' + @ATDT_DATA
 
         FETCH NEXT FROM cur INTO @ATXR_DEST_ID, @ATXR_SOURCE_ID, @ATSY_ID, @ATDT_DATA, @MailToDate
     END
