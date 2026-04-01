@@ -214,36 +214,21 @@ function Update-ATDValidation-Pre {
 UPDATE BLOG
 SET
     StatusMessage = CASE
-        WHEN
-            CCL.CLCL_ID IS NULL
-            OR ATLD.ATLD_ID IS NULL
-            OR ATSY.ATSY_ID IS NULL
-        THEN 'Stage Error'
+        WHEN CCL.CLCL_ID IS NULL THEN 'Stage Error'
         ELSE 'Validated'
     END,
     ErrorMessage = CASE
         WHEN CCL.CLCL_ID IS NULL THEN 'CLCL_ID not found'
-        WHEN ATLD.ATLD_ID IS NULL THEN 'ATLD_ID not found'
-        WHEN ATSY.ATSY_ID IS NULL THEN 'ATSY_ID not found'
         ELSE NULL
     END,
     ATDT_DATA = CONCAT(BLOG.BaseFilename, '_', BLOG.FilenameAppend, BLOG.Extension),
-    ATSY_DESC = ATSY.ATSY_DESC,
     DestinationDirectoryPath = CASE
-        WHEN
-            CCL.CLCL_ID IS NULL
-            OR ATLD.ATLD_ID IS NULL
-            OR ATSY.ATSY_ID IS NULL
-        THEN CONCAT(BLOG.SourceDirectoryPath, '\Error')
+        WHEN CCL.CLCL_ID IS NULL THEN CONCAT(BLOG.SourceDirectoryPath, '\Error')
         ELSE NULL
     END
 FROM FacetsEXT..ATDT_BATCH_LOG BLOG
 LEFT JOIN Facets..CMC_CLCL_CLAIM CCL
     ON CCL.CLCL_ID = BLOG.CLCL_ID
-LEFT JOIN Facets..CER_ATXR_CLAIM ATLD
-    ON ATLD.ATLD_ID = BLOG.ATLD_ID
-LEFT JOIN Facets..CER_ATTR_STYLE ATSY
-    ON ATSY.ATSY_ID = BLOG.ATSY_ID
 WHERE StatusMessage = 'Pending'
 "@
 
