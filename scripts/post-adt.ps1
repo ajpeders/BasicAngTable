@@ -122,7 +122,7 @@ WHERE
             if (-not (Test-Path -LiteralPath $destDir)) {
                 New-Item -ItemType Directory -Path $destDir -Force | Out-Null
             }
-            Move-Item -LiteralPath $f["SRC"] -Destination $f["DEST"]
+            Move-Item -LiteralPath $f["SRC"] -Destination $f["DEST"] -Force
             $moved += 1
         }
     }
