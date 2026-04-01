@@ -30,16 +30,21 @@ function Invoke-SQL {
 
     $cmd = $conn.CreateCommand()
     $cmd.CommandText = $SqlCommand
-
-    $adapter = New-Object System.Data.SqlClient.SqlDataAdapter $cmd
-    $dt = New-Object System.Data.DataTable
-
     $conn.Open()
-    $rowsAffected = $adapter.Fill($dt)
-    $conn.Close()
 
-    Write-Host "  SQL: $rowsAffected row(s) affected."
-    return $dt
+    $isSelect = $SqlCommand.TrimStart() -match '^SELECT'
+    if ($isSelect) {
+        $adapter = New-Object System.Data.SqlClient.SqlDataAdapter $cmd
+        $dt = New-Object System.Data.DataTable
+        $null = $adapter.Fill($dt)
+        $conn.Close()
+        Write-Host "  SQL: $($dt.Rows.Count) row(s) returned."
+        return $dt
+    } else {
+        $rowsAffected = $cmd.ExecuteNonQuery()
+        $conn.Close()
+        Write-Host "  SQL: $rowsAffected row(s) affected."
+    }
 }
 
 # Step 1: Validate attachments loaded and update log.
