@@ -222,6 +222,24 @@ try {
 
     Write-Host "Directories validated."
 
+    # Diagnostic: show batch log state before processing.
+    Write-Host ""
+    Write-Host "--- DIAGNOSTICS ---"
+    $diag = Invoke-SQL -DataSource $Datasource -Database $Database -SqlCommand @"
+SELECT
+    StatusMessage,
+    Cnt = COUNT(*),
+    HasATXR = SUM(CASE WHEN ATXR_DEST_ID IS NOT NULL THEN 1 ELSE 0 END),
+    HasMailTo = SUM(CASE WHEN MailToDate IS NOT NULL THEN 1 ELSE 0 END)
+FROM FacetsEXT..ATDT_BATCH_LOG
+GROUP BY StatusMessage
+"@
+    foreach ($row in $diag) {
+        Write-Host "  Status=$($row['StatusMessage'])  Count=$($row['Cnt'])  HasATXR=$($row['HasATXR'])  HasMailTo=$($row['HasMailTo'])"
+    }
+    Write-Host "-------------------"
+    Write-Host ""
+
     # Step 1: Validate load.
     Write-Host "Step 1: Validating attachment load..."
     Update-ATDValidation-Post
