@@ -34,7 +34,7 @@ function Invoke-SQL {
         param($s, $e)
         $printMessages.Add($e.Message)
     })
-    $conn.FireInfoMessageEventOnUserErrors = $true
+    $conn.FireInfoMessageEventOnUserErrors = $false
 
     $cmd = $conn.CreateCommand()
     $cmd.CommandText = $SqlCommand
@@ -273,18 +273,27 @@ WHERE StatusMessage = 'Staged'
     Invoke-SQL -DataSource $Datasource -Database $Database -SqlCommand "EXEC FacetsEXT..ADT_INSERT_MAILTO"
     Write-Host "Step 2: Done."
 
-    # Diagnostic: Check MailToDateLoaded after proc.
+    # Diagnostic: Check MailToDateLoaded + verify notes exist in Facets.
     Write-Host ""
-    Write-Host "--- POST-MAILTO DIAGNOSTIC ---"
-    $mailPost = Invoke-SQL -DataSource $Datasource -Database $Database -SqlCommand @"
-SELECT ATDT_DATA, MailToDateLoaded, StatusMessage
-FROM FacetsEXT..ATDT_BATCH_LOG
-WHERE StatusMessage = 'Staged'
+    Write-Host "--- POST-MAILTO VERIFY ---"
+    $mailVerify = Invoke-SQL -DataSource $Datasource -Database $Database -SqlCommand @"
+SELECT
+    BLOG.ATDT_DATA,
+    BLOG.MailToDateLoaded,
+    NoteExists   = CASE WHEN ATNT.ATXR_DEST_ID IS NOT NULL THEN 'Yes' ELSE 'No' END,
+    NoteDestId   = ATNT.ATXR_DEST_ID,
+    AttachLink   = ATNT.ATXR_ATTACH_ID,
+    BlogDest     = BLOG.ATXR_DEST_ID
+FROM FacetsEXT..ATDT_BATCH_LOG BLOG
+LEFT JOIN Facets..CER_ATNT_NOTE_D ATNT
+    ON ATNT.ATXR_ATTACH_ID = BLOG.ATXR_DEST_ID
+    AND ATNT.ATNT_TYPE = 'ATMD'
+WHERE BLOG.StatusMessage = 'Staged'
 "@
-    foreach ($row in $mailPost) {
-        Write-Host "  ATDT=$($row['ATDT_DATA'])  MailToDateLoaded=$($row['MailToDateLoaded'])  Status=$($row['StatusMessage'])"
+    foreach ($row in $mailVerify) {
+        Write-Host "  ATDT=$($row['ATDT_DATA'])  Loaded=$($row['MailToDateLoaded'])  NoteExists=$($row['NoteExists'])  AttachLink=$($row['AttachLink'])  BlogDest=$($row['BlogDest'])"
     }
-    Write-Host "------------------------------"
+    Write-Host "--------------------------"
     Write-Host ""
 
     # Step 3: Update log.
