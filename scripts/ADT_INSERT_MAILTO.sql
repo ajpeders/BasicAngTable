@@ -85,7 +85,7 @@ BEGIN
                 ATXR_LAST_UPD_DT, ATXR_LAST_UPD_USUS, ATXR_COMPILED_KEY, ATXR_LOCK_TOKEN
             )
             VALUES (
-                @ATXR_SOURCE_ID, @NoteDestId, @ATSY_ID, 'CLCL', 'S',
+                @ATXR_SOURCE_ID, @NoteDestId, @NoteAtsyId, 'CLCL', 'S',
                 'Claim Attachment Note', @Timestamp, @UsusId,
                 @Timestamp, @UsusId, '', 1
             )
@@ -95,7 +95,7 @@ BEGIN
                 ATSY_ID, ATXR_DEST_ID, ATNT_SEQ_NO, ATNT_TYPE, ATXR_ATTACH_ID, ATNT_LOCK_TOKEN
             )
             VALUES (
-                @NoteAtsyId, @NoteDestId, 0, 'ATMD', @ATXR_DEST_ID, 1
+                @NoteAtsyId, @NoteDestId, 0, 'ATNO', @ATXR_DEST_ID, 1
             )
 
             -- addAtnd$: Note text. Plain text → VARBINARY same as CERSP_ATND_APPLY.
