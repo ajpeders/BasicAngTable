@@ -95,7 +95,7 @@ BEGIN
                 ATSY_ID, ATXR_DEST_ID, ATNT_SEQ_NO, ATNT_TYPE, ATXR_ATTACH_ID, ATNT_LOCK_TOKEN
             )
             VALUES (
-                @NoteAtsyId, @NoteDestId, 0, 'ATNO', @ATXR_DEST_ID, 1
+                @NoteAtsyId, @NoteDestId, 0, 'ATN0', @ATXR_DEST_ID, 1
             )
 
             -- addAtnd$: Note text. Plain text → VARBINARY same as CERSP_ATND_APPLY.
