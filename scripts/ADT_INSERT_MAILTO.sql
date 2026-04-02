@@ -11,7 +11,7 @@ BEGIN
             @NoteText        VARCHAR(300),
             @NoteDestId      DATETIME,       -- new ATXR_DEST_ID for the note
             @UsusId          VARCHAR(20) = 'BATCH_SVC',
-            @NoteAtsyId      VARCHAR(10) = 'ATMO',
+            @NoteAtsyId      VARCHAR(10) = 'ATN0',
             @Timestamp       VARCHAR(30),
             @RowCount        INT = 0
 
