@@ -24,17 +24,22 @@ BEGIN
 
     DECLARE cur CURSOR LOCAL FAST_FORWARD FOR
         SELECT
-              ATXR_DEST_ID
-            , ATXR_SOURCE_ID
-            , ATSY_ID
-            , ATDT_DATA
-            , MailToDate
-        FROM FacetsEXT..ATDT_BATCH_LOG
-        WHERE StatusMessage    = 'Staged'
-          AND MailToDate       IS NOT NULL
-          AND MailToDateLoaded = 0
-          AND ATXR_DEST_ID     IS NOT NULL
-          AND ATXR_SOURCE_ID   IS NOT NULL
+              ATXR.ATXR_DEST_ID       -- attachment's ATXR_DEST_ID direct from Facets
+            , CLCL.ATXR_SOURCE_ID     -- claim's ATXR_SOURCE_ID direct from Facets
+            , BLOG.ATSY_ID
+            , BLOG.ATDT_DATA
+            , BLOG.MailToDate
+        FROM FacetsEXT..ATDT_BATCH_LOG BLOG
+        JOIN Facets..CMC_CLCL_CLAIM CLCL
+            ON CLCL.CLCL_ID = BLOG.CLCL_ID
+        JOIN Facets..CER_ATXR_ATTACH_U ATXR
+            ON ATXR.ATXR_SOURCE_ID = CLCL.ATXR_SOURCE_ID
+        JOIN Facets..CER_ATDT_DATA_D ATDT
+            ON ATDT.ATXR_DEST_ID = ATXR.ATXR_DEST_ID
+            AND ATDT.ATDT_DATA = BLOG.ATDT_DATA
+        WHERE BLOG.StatusMessage    = 'Staged'
+          AND BLOG.MailToDate       IS NOT NULL
+          AND BLOG.MailToDateLoaded = 0
 
     OPEN cur
     FETCH NEXT FROM cur INTO @ATXR_DEST_ID, @ATXR_SOURCE_ID, @ATSY_ID, @ATDT_DATA, @MailToDate
@@ -104,8 +109,8 @@ BEGIN
             -- Mark as loaded.
             UPDATE FacetsEXT..ATDT_BATCH_LOG
             SET MailToDateLoaded = 1
-            WHERE ATXR_DEST_ID = @ATXR_DEST_ID
-              AND ATDT_DATA    = @ATDT_DATA
+            WHERE ATDT_DATA      = @ATDT_DATA
+              AND StatusMessage  = 'Staged'
 
             SET @RowCount = @RowCount + 1
             PRINT 'OK: ' + @ATDT_DATA + ' (MailToDateLoaded=' + CAST(@@ROWCOUNT AS VARCHAR(10)) + ')'
